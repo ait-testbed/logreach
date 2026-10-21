@@ -77,23 +77,19 @@ class Analyzer:
         return True
 
     def check_type(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
-        datetimekey: str = "time"
-        config: LogConfig = config_factory(
-            path, logtype, datetimekey=datetimekey, allow_empty_timestamp=allow_empty_timestamp)
+        config = config_factory(path, logtype, datetimekey="time",
+                                allow_empty_timestamp=allow_empty_timestamp)
         try:
-            first_line = None
+            # get back first line that parses as logtype
             with Logfile(config, logger=logging.getLogger()) as lf:
-                for line in lf:
-                    first_line = line
-                    break
-            if first_line is None:
-                raise LogFileEmpty(f"{path} is empty")
-            if first_line.timestamp is None:
-                raise LogTypeException(f"Unable to determine timestamp in {path}: {first_line}")
+                first_line = next(lf, None)
         except UnicodeDecodeError:
             raise LogTypeException(f"Unsupported filetype: {path}")
         except json.decoder.JSONDecodeError:
             raise LogTypeException(f"Not a valid json file: {path}")
+
+        if first_line is None:
+            raise LogFileEmpty(f"{path} is empty")
         return config
 
     def determine(self, full_path: str, allow_empty_timestamp: bool = True) -> LogConfig:
