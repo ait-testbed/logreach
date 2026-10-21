@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from enum import Enum
 from dateutil.parser import parse, ParserError
-from logmate.exceptions import DateTimeKeyNotFound, DateTimeNotFound
+from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
 import json
 import re
 

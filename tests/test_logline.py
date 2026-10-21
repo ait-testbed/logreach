@@ -1,4 +1,4 @@
-from logmate.schemas.logline import Logline
+from logreach.schemas.logline import Logline
 from datetime import datetime
 
 def test_logfile_initialisation():

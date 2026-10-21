@@ -1,4 +1,4 @@
-from logmate.exceptions import LogmateError,NotInRange, DateTimeNotFound
+from logreach.exceptions import LogreachError,NotInRange, DateTimeNotFound
 from .schemas.logfileconfig import LogfileConfig,LogConfig,JsonLogfileConfig,TimestampRegex,LogType
 from .schemas.logline import Logline
 from typing import Optional
@@ -92,6 +92,6 @@ class Logfile:
                 raise NotInRange(f"line number {self.lineno} is not in timerange")
             return Logline(timestamp=timestamp, msg=logline, lineno=self.lineno, filename=str(self.config.logfile_path))
         else:
-            raise LogmateError("Logfile is not open for reading")
+            raise LogreachError("Logfile is not open for reading")
             
         

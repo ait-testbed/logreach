@@ -21,7 +21,7 @@ wheels = [
 ]
 
 [[package]]
-name = "logmate"
+name = "logreach"
 source = { editable = "." }
 dependencies = [
     { name = "python-dateutil" },

@@ -1,5 +1,5 @@
 [project]
-name = "logmate"
+name = "logreach"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -11,7 +11,7 @@ dependencies = [
 dynamic = ["version"]
 
 [project.scripts]
-logmate = "logmate.__cli__:main"
+logreach = "logreach.__cli__:main"
 logtype = "logtype.__cli__:main"
 
 [build-system]
@@ -23,7 +23,7 @@ namespaces = true
 where = ["src"]
 
 [tool.setuptools.dynamic]
-version = {attr = "logmate.metadata.__version__"}
+version = {attr = "logreach.metadata.__version__"}
 
 [tool.mypy]
 explicit_package_bases = true

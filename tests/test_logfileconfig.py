@@ -1,5 +1,5 @@
 import re
-from logmate.schemas.logfileconfig import LogfileConfig, JsonLogfileConfig, TimestampRegex
+from logreach.schemas.logfileconfig import LogfileConfig, JsonLogfileConfig, TimestampRegex
 
 def test_timestampregex_syslog():
     match = re.match(TimestampRegex.syslog.value, "2026-09-01 13:25:38 status installed mailcap:all 3.69")

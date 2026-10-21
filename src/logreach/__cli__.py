@@ -1,6 +1,6 @@
-from logmate.logfile import Logfile,config_factory
-from logmate.schemas.logline import Logline
-from logmate.schemas.logfileconfig import LogType
+from logreach.logfile import Logfile,config_factory
+from logreach.schemas.logline import Logline
+from logreach.schemas.logfileconfig import LogType
 from dateutil.parser import parse
 from datetime import datetime
 from rich import print
@@ -38,7 +38,7 @@ def format_logline(logline:Logline):
 
 def main():
     parser = argparse.ArgumentParser(
-                    prog='logmate',
+                    prog='logreach',
                     description='Filters logfiles by extracting and comparing timestamps')
     parser.add_argument('--file', help='path to logfile', required=True)
     parser.add_argument('--begin', help='filter from this timestamp on', required=False, type=parsed_datetime)

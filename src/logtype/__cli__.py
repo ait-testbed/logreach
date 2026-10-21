@@ -1,8 +1,8 @@
 from logtype.exceptions import LogTypeException
 from logtype.exceptions import LogFileEmpty
-from logmate.logfile import Logfile
-from logmate.exceptions import LogmateError
-from logmate.schemas.logfileconfig import LogConfig
+from logreach.logfile import Logfile
+from logreach.exceptions import LogreachError
+from logreach.schemas.logfileconfig import LogConfig
 import argparse
 import logging
 import os
@@ -74,7 +74,7 @@ def main():
             except LogFileEmpty:
                 if ignore_empty:
                     continue
-            except LogmateError as e:
+            except LogreachError as e:
                 eprint(f"{full_path}: {e}")
                 exit(1)
             except LogTypeException as e:

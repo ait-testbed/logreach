@@ -1,7 +1,7 @@
 from logtype.exceptions import FoundInTypes,IgnoredFile, LogTypeException, LogFileEmpty
-from logmate.exceptions import DateTimeKeyNotFound
-from logmate.schemas.logfileconfig import LogType,LogConfig
-from logmate.logfile import config_factory, Logfile
+from logreach.exceptions import DateTimeKeyNotFound
+from logreach.schemas.logfileconfig import LogType,LogConfig
+from logreach.logfile import config_factory, Logfile
 import logging
 import json
 import re
