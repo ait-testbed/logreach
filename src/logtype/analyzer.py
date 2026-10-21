@@ -1,26 +1,26 @@
-from logtype.exceptions import FoundInTypes,IgnoredFile, LogTypeException, LogFileEmpty
+from logtype.exceptions import FoundInTypes, IgnoredFile, LogTypeException, LogFileEmpty
 from logreach.exceptions import DateTimeKeyNotFound
-from logreach.schemas.logfileconfig import LogType,LogConfig
+from logreach.schemas.logfileconfig import LogType, LogConfig
 from logreach.logfile import config_factory, Logfile
 import logging
 import json
 import re
 import os
-from typing import Optional
+from typing import Any, Optional
 
 
 class IgnoresList:
     def __init__(self, ignorelist_file: str):
         self.ignorelist_file = ignorelist_file
-        self.patterns = []
+        self.patterns: list[re.Pattern[str]] = []
         self.compile_regex()
 
-    def compile_regex(self):
+    def compile_regex(self) -> None:
         with open(self.ignorelist_file, 'r') as list_file:
             for line in list_file:
                 self.patterns.append(re.compile(line.rstrip('\n')))
 
-    def is_ignored(self, filepath):
+    def is_ignored(self, filepath: str) -> bool:
         for pattern in self.patterns:
             if re.search(pattern, filepath):
                 return True
@@ -28,38 +28,39 @@ class IgnoresList:
 
 
 class TypesList:
-    def __init__(self, types_file="logtypes.json"):
+    def __init__(self, types_file: str = "logtypes.json"):
         self.file = types_file
-        self.data = {}
+        self.data: dict[str, dict[str, Any]] = {}
         self._read_file()
 
-    def _read_file(self):
+    def _read_file(self) -> None:
         with open(self.file, 'r') as types_file:
             for line in types_file:
                 item = json.loads(line)
                 self.data[item["logfile_path"]] = item
 
-    def is_in_database(self, path):
+    def is_in_database(self, path: str) -> bool:
         if path in self.data.keys():
             return True
         return False
 
 
-
-
 class Analyzer:
-    def __init__(self, types_file: str = "logtypes.json", ignores_file: str ="ignore_list.txt", auto_create: bool = True):
+    def __init__(self, types_file: str = "logtypes.json", ignores_file: str = "ignore_list.txt",
+                 auto_create: bool = True):
         self._types = None
         self._ignores = None
         if types_file:
             if auto_create:
                 if not os.path.exists(types_file):
-                    with open(types_file, 'w'): pass
+                    with open(types_file, 'w'):
+                        pass
             self._types = TypesList(types_file)
         if ignores_file:
             if auto_create:
                 if not os.path.exists(ignores_file):
-                    with open(ignores_file, 'w'): pass
+                    with open(ignores_file, 'w'):
+                        pass
             self._ignores = IgnoresList(ignores_file)
 
     @property
@@ -81,7 +82,8 @@ class Analyzer:
 
     def check_type(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
         datetimekey: str = "time"
-        config: LogConfig = config_factory(path, logtype, datetimekey=datetimekey, allow_empty_timestamp=allow_empty_timestamp)
+        config: LogConfig = config_factory(
+            path, logtype, datetimekey=datetimekey, allow_empty_timestamp=allow_empty_timestamp)
         try:
             first_line = None
             with Logfile(config, logger=logging.getLogger()) as lf:
@@ -97,7 +99,6 @@ class Analyzer:
         except json.decoder.JSONDecodeError:
             raise LogTypeException(f"Not a valid json file: {path}")
         return config
-
 
     def determine(self, full_path: str, allow_empty_timestamp: bool = True) -> LogConfig:
         for logtype in LogType:

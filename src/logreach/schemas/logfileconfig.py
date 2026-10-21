@@ -4,9 +4,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 from enum import Enum
 from dateutil.parser import parse, ParserError
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
+from logreach.exceptions import DateTimeKeyNotFound
 import json
 import re
+
 
 class LogType(Enum):
     SYSLOG = "syslog"
@@ -14,10 +15,12 @@ class LogType(Enum):
     ACCESS = "access"
     JSON = "json"
 
+
 class TimestampRegex(Enum):
     syslog = r'\A(.+?\d{2}:\d{2}:\d{2}\S*)\s+'
     audit = r'\A.*msg=audit\((.+):\d+\):\s+'
     access = r'\A.+?\s\[(.+)\]\s\"'
+
 
 @dataclass
 class LogConfig:
@@ -37,17 +40,17 @@ class LogConfig:
                 return False
         return True
 
-
-    def parse_timestamp(self, logline: str) -> datetime:
+    def parse_timestamp(self, logline: str) -> Optional[datetime]:
         pass
+
 
 @dataclass
 class LogfileConfig(LogConfig):
-    regex_pattern: Pattern
+    regex_pattern: Pattern[str]
     _unix_timestamp: bool = False
 
-    def parse_timestamp(self, logline: str) -> datetime:
-        match = re.match(self.regex_pattern, logline)   
+    def parse_timestamp(self, logline: str) -> Optional[datetime]:
+        match = re.match(self.regex_pattern, logline)
         if match:
             parsed_match = match.group(1)
             if self._unix_timestamp:
@@ -60,14 +63,16 @@ class LogfileConfig(LogConfig):
                     return datetime.fromtimestamp(float(parsed_match), timezone.utc)
                 else:
                     print(e)
+        return None
+
 
 @dataclass
 class JsonLogfileConfig(LogConfig):
     datetime_key: str
 
-    def parse_timestamp(self, logline: str) -> datetime:
+    def parse_timestamp(self, logline: str) -> Optional[datetime]:
         json_object = json.loads(logline)
-        if not self.datetime_key in json_object:
-            raise DateTimeKeyNotFound(f"Unable to find timestamp-key \"{self.datetime_key}\" in json-string: {json_object}")
+        if self.datetime_key not in json_object:
+            raise DateTimeKeyNotFound(
+                f"Unable to find timestamp-key \"{self.datetime_key}\" in json-string: {json_object}")
         return parse(json_object[self.datetime_key])
-
