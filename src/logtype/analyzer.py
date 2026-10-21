@@ -9,6 +9,13 @@ import os
 from typing import Any, Optional
 
 
+def create_if_missing(path: str) -> None:
+    """Create an empty file at path unless it exists or path is empty."""
+    if path and not os.path.exists(path):
+        with open(path, 'w'):
+            pass
+
+
 class IgnoresList:
     def __init__(self, ignorelist_file: str):
         self.ignorelist_file = ignorelist_file
@@ -48,20 +55,11 @@ class TypesList:
 class Analyzer:
     def __init__(self, types_file: str = "logtypes.json", ignores_file: str = "ignore_list.txt",
                  auto_create: bool = True):
-        self._types = None
-        self._ignores = None
-        if types_file:
-            if auto_create:
-                if not os.path.exists(types_file):
-                    with open(types_file, 'w'):
-                        pass
-            self._types = TypesList(types_file)
-        if ignores_file:
-            if auto_create:
-                if not os.path.exists(ignores_file):
-                    with open(ignores_file, 'w'):
-                        pass
-            self._ignores = IgnoresList(ignores_file)
+        if auto_create:
+            create_if_missing(types_file)
+            create_if_missing(ignores_file)
+        self._types = TypesList(types_file) if types_file else None
+        self._ignores = IgnoresList(ignores_file) if ignores_file else None
 
     @property
     def types(self) -> Optional[TypesList]:
