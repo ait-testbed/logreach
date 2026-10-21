@@ -86,20 +86,22 @@ class Logfile:
         return self.config.parse_timestamp(line)
 
     def readline(self) -> Optional[Logline]:
-        if self.filehandle:
-            logline = self.filehandle.readline()
-            if not logline:
-                return None
-            timestamp = self._parse_timestamp(logline)
-            if not self.config.allow_empty_timestamp and not timestamp:
-                self.logger.error(f"Unable to parse timestamp: {logline}")
-                raise DateTimeNotFound("Timestamp not found")
-
-            self.lineno = self.lineno+1
-            # continue with next line if timestamp is not in range
-            if timestamp is None or not self.config.in_range(timestamp):
-                raise NotInRange(f"line number {self.lineno} is not in timerange")
-            return Logline(timestamp=timestamp, msg=logline, lineno=self.lineno,
-                           filename=str(self.config.logfile_path))
-        else:
+        if not self.filehandle:
             raise LogreachError("Logfile is not open for reading")
+
+        line = self.filehandle.readline()
+        if not line:
+            return None
+
+        timestamp = self._parse_timestamp(line)
+        if timestamp is None and not self.config.allow_empty_timestamp:
+            self.logger.error(f"Unable to parse timestamp: {line}")
+            raise DateTimeNotFound("Timestamp not found")
+
+        self.lineno += 1
+        # __next__ skips lines without timestamp or outside the time window
+        if timestamp is None or not self.config.in_range(timestamp):
+            raise NotInRange(f"line number {self.lineno} is not in timerange")
+
+        return Logline(timestamp=timestamp, msg=line, lineno=self.lineno,
+                       filename=str(self.config.logfile_path))
