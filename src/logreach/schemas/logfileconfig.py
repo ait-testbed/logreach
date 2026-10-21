@@ -30,15 +30,9 @@ class LogConfig:
     allow_empty_timestamp: bool = field(default=True, kw_only=True)
 
     def in_range(self, timestamp: datetime) -> bool:
-        if not timestamp:
-            return False
-        if self.begin:
-            if timestamp < self.begin:
-                return False
-        if self.end:
-            if timestamp > self.end:
-                return False
-        return True
+        after_begin = self.begin is None or timestamp >= self.begin
+        before_end = self.end is None or timestamp <= self.end
+        return after_begin and before_end
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         pass
