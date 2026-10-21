@@ -1,0 +1,35 @@
+[project]
+name = "logmate"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "python-dateutil>=2.9.0.post0",
+    "rich>=15.0.0",
+]
+
+dynamic = ["version"]
+
+[project.scripts]
+logmate = "logmate.__cli__:main"
+logtype = "logtype.__cli__:main"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+namespaces = true
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "logmate.metadata.__version__"}
+
+[tool.mypy]
+explicit_package_bases = true
+
+[dependency-groups]
+dev = [
+    "prek>=0.4.3",
+    "pytest>=9.1.0"
+]
