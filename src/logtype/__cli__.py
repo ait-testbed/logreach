@@ -77,7 +77,7 @@ def main() -> None:
             full_path = os.path.join(root, file)
             try:
                 scanner.is_ignored(full_path)
-                config: LogConfig = scanner.determine(
+                config: LogConfig = scanner.detect_config(
                     full_path, allow_empty_timestamp=not args.force_timestamp)
                 config.begin = args.begin
                 config.end = args.end

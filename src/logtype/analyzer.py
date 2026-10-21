@@ -76,7 +76,13 @@ class Analyzer:
             raise IgnoredFile
         return True
 
-    def check_type(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
+    def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
+        """Can this file be read as logtype?
+
+        If yes return config if no raise LogTypeException. If the file
+        is empty, raise LogFileEmpty.
+        """
+
         config = config_factory(path, logtype, datetimekey="time",
                                 allow_empty_timestamp=allow_empty_timestamp)
         try:
@@ -92,15 +98,21 @@ class Analyzer:
             raise LogFileEmpty(f"{path} is empty")
         return config
 
-    def determine(self, full_path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+    def detect_config(self, full_path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+        """Try each log type on the file and return the config of the first one
+        that works.
+
+        If none work, raise LogTypeException.
+        """
+
         for logtype in LogType:
             try:
-                config = self.check_type(full_path, logtype, allow_empty_timestamp=allow_empty_timestamp)
+                config = self._try_logtype(full_path, logtype, allow_empty_timestamp=allow_empty_timestamp)
                 return config
             except LogFileEmpty as e:
                 raise e
             except DateTimeKeyNotFound as e:
                 raise LogTypeException(f"Error in {full_path}: {e}")
             except LogTypeException:
-                continue
+                continue  # try matching the next LogType
         raise LogTypeException(f"(Unable to determine logtype for: {full_path}")
