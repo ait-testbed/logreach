@@ -70,12 +70,10 @@ class Analyzer:
         return self._ignores
 
     def is_ignored(self, full_path: str) -> bool:
-        if self._types:
-            if self._types.is_in_database(full_path):
-                raise FoundInTypes
-        if self._ignores:
-            if self._ignores.is_ignored(full_path):
-                raise IgnoredFile
+        if self._types and self._types.is_in_database(full_path):
+            raise FoundInTypes
+        if self._ignores and self._ignores.is_ignored(full_path):
+            raise IgnoredFile
         return True
 
     def check_type(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
