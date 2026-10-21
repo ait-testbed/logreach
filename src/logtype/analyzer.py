@@ -47,9 +47,7 @@ class TypesList:
                 self.data[item["logfile_path"]] = item
 
     def is_in_database(self, path: str) -> bool:
-        if path in self.data.keys():
-            return True
-        return False
+        return path in self.data
 
 
 class Analyzer:
@@ -70,6 +68,11 @@ class Analyzer:
         return self._ignores
 
     def is_ignored(self, full_path: str) -> bool:
+        """Decides wether logtype should skip a file or not.
+
+        If the file is in the types database or matches the ignore list,
+        it is skipped.
+        """
         if self._types and self._types.is_in_database(full_path):
             raise FoundInTypes
         if self._ignores and self._ignores.is_ignored(full_path):
