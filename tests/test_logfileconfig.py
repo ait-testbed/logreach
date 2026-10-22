@@ -18,13 +18,13 @@ from logreach.schemas.logfileconfig import TimestampRegex
                  "Aug 31 16:49:00", id="bsd-two-digit-day"),
 ])
 def test_timestampregex_syslog(line, expected):
-    match = re.match(TimestampRegex.syslog.value, line)
+    match = re.match(TimestampRegex.SYSLOG.value, line)
     assert match is not None
     assert match.group(1) == expected
 
 
 def test_audit_logs():
-    match = re.match(TimestampRegex.audit.value,
+    match = re.match(TimestampRegex.AUDIT.value,
                      'type=DAEMON_START msg=audit(1788266693.261:9117): op=start ver=3.0.9 format=enriched '
                      'kernel=6.6.62+rpt-rpi-2712 auid=4294967295 pid=700 uid=0 ses=4294967295 '
                      'res=successAUID="unset" UID="root"')

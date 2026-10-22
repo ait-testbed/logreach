@@ -10,9 +10,9 @@ import re
 
 
 DEFAULT_TIMESTAMP_REGEX = {
-    LogType.SYSLOG: TimestampRegex.syslog,
-    LogType.AUDIT: TimestampRegex.audit,
-    LogType.ACCESS: TimestampRegex.access,
+    LogType.SYSLOG: TimestampRegex.SYSLOG,
+    LogType.AUDIT: TimestampRegex.AUDIT,
+    LogType.ACCESS: TimestampRegex.ACCESS,
 }
 
 

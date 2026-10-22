@@ -17,9 +17,9 @@ class LogType(Enum):
 
 
 class TimestampRegex(Enum):
-    syslog = r'\A(.+?\d{2}:\d{2}:\d{2}\S*)\s+'
-    audit = r'\A.*msg=audit\((.+):\d+\):\s+'
-    access = r'\A.+?\s\[(.+)\]\s\"'
+    SYSLOG = r'\A(.+?\d{2}:\d{2}:\d{2}\S*)\s+'
+    AUDIT = r'\A.*msg=audit\((.+):\d+\):\s+'
+    ACCESS = r'\A.+?\s\[(.+)\]\s\"'
 
 
 @dataclass
