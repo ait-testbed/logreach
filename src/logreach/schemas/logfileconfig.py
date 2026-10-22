@@ -39,11 +39,21 @@ class LogConfig:
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         pass
 
+    def describe(self) -> str:
+        """Name how this config reads timestamps, e.g. 'syslog'."""
+        return type(self).__name__
+
 
 @dataclass
 class RegexLogConfig(LogConfig):
     regex_pattern: Pattern[str]
     _unix_timestamp: bool = False
+
+    def describe(self) -> str:
+        try:
+            return TimestampRegex(self.regex_pattern.pattern).name.lower()
+        except ValueError:  # not one of the built-in regexes
+            return f'custom regex {self.regex_pattern.pattern}'
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         match = self.regex_pattern.match(logline)
@@ -65,6 +75,9 @@ class RegexLogConfig(LogConfig):
 @dataclass
 class JsonLogConfig(LogConfig):
     datetime_key: str
+
+    def describe(self) -> str:
+        return f'json ({self.datetime_key})'
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         record = json.loads(logline)

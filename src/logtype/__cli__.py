@@ -58,6 +58,7 @@ def exit_with_report(problems: list[str], max_problems: int, unparsed_lines: int
     if len(problems) > len(shown):
         report.append(f'  ... and {len(problems) - len(shown)} more (see --max-problems)')
     report.append(f'{unparsed_lines} lines without timestamp, {undetermined_files} undetermined files')
+    sys.stdout.flush()  # so the report comes after all output, even when stdout is redirected
     # plain stderr instead of rich, which would treat [...] in log lines as markup
     sys.stderr.write('\n'.join(report) + '\n')
     sys.exit(1)
@@ -90,6 +91,8 @@ def main() -> None:
                         action='store_true')
     parser.add_argument('--max-problems', type=int, default=50,
                         help='problems listed at the end of the run; the rest are only counted')
+    parser.add_argument('--check', action='store_true',
+                        help="only show each file's detected type and the problems, not the log lines")
     parser.add_argument('--fail-fast', action='store_true',
                         help='stop at the first problem instead of reporting all problems at the end')
     args = parser.parse_args()
@@ -118,7 +121,10 @@ def main() -> None:
                         # checked before printing: reading this line may have skipped one without timestamp
                         if args.fail_fast and lf.unparsed_count:
                             break
-                        format_logline(line)
+                        if not args.check:
+                            format_logline(line)
+                if args.check:
+                    sys.stdout.write(f'{path}: {config.describe()}\n')
                 problems.extend(report_unparsed(path, lf))
                 unparsed_lines += lf.unparsed_count
             # must come before LogTypeError, which LogFileEmpty subclasses

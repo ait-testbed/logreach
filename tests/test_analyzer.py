@@ -174,3 +174,30 @@ def test_logtype_lists_only_max_problems_and_counts_the_rest(monkeypatch, tmp_pa
     assert err.count('Unable to determine logtype') == 1
     assert '... and 2 more (see --max-problems)' in err
     assert '0 lines without timestamp, 3 undetermined files' in err
+
+
+def test_logtype_fail_fast_stops_at_first_undetermined_file(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
+    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
+    assert exit_code == 1
+    assert capsys.readouterr().err.count('Unable to determine logtype') == 1
+
+
+def test_logtype_fail_fast_stops_within_a_file(monkeypatch, tmp_path, capsys):
+    lines = SYSLOG.splitlines(keepends=True)
+    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
+    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
+    assert [line.lineno for line in printed] == [1]  # line 3 is never printed
+    assert exit_code == 1
+    assert ':2: no timestamp: no timestamp' in capsys.readouterr().err
+
+
+def test_logtype_check_shows_types_instead_of_lines(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'eve.json': EVE_JSON})
+    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--check')
+    assert printed == []
+    assert exit_code == 0
+    assert sorted(capsys.readouterr().out.splitlines()) == [
+        f'{logs / "eve.json"}: json (timestamp)',
+        f'{logs / "syslog"}: syslog',
+    ]
