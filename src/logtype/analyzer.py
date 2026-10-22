@@ -16,7 +16,7 @@ def create_if_missing(path: str) -> None:
             pass
 
 
-class IgnoresList:
+class IgnoreList:
     def __init__(self, ignores_file: str):
         self.ignores_file = ignores_file
         self.patterns: list[re.Pattern[str]] = []
@@ -38,7 +38,7 @@ class IgnoresList:
         return False
 
 
-class TypesList:
+class KnownLogfilePaths:
     def __init__(self, types_file: str = "logtypes.json"):
         self.types_file = types_file
         self.data: dict[str, dict[str, Any]] = {}
@@ -60,15 +60,15 @@ class Analyzer:
         if auto_create:
             create_if_missing(types_file)
             create_if_missing(ignores_file)
-        self._types = TypesList(types_file) if types_file else None
-        self._ignores = IgnoresList(ignores_file) if ignores_file else None
+        self._types = KnownLogfilePaths(types_file) if types_file else None
+        self._ignores = IgnoreList(ignores_file) if ignores_file else None
 
     @property
-    def types(self) -> Optional[TypesList]:
+    def types(self) -> Optional[KnownLogfilePaths]:
         return self._types
 
     @property
-    def ignores(self) -> Optional[IgnoresList]:
+    def ignores(self) -> Optional[IgnoreList]:
         return self._ignores
 
     def is_ignored(self, path: str) -> bool:
