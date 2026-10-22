@@ -10,6 +10,9 @@ from logreach.exceptions import DateTimeNotFound, LogreachError, NotInRange
 from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
 from .schemas.logline import Logline
 
+# lines without timestamp that Logfile keeps for reporting; the rest are only counted
+MAX_KEPT_UNPARSED = 5
+
 DEFAULT_TIMESTAMP_REGEX = {
     LogType.SYSLOG: TimestampRegex.SYSLOG,
     LogType.AUDIT: TimestampRegex.AUDIT,
@@ -44,8 +47,9 @@ class Logfile:
         self.config: LogConfig = config
         self.filehandle: Optional[TextIO] = None
         self.lineno: int = 0
-        # (lineno, line) of every line skipped because it has no timestamp
+        # lines skipped because they have no timestamp: the first few as (lineno, line), and a count
         self.unparsed: list[tuple[int, str]] = []
+        self.unparsed_count: int = 0
         self.open()
         self.logger = logger
 
@@ -98,7 +102,9 @@ class Logfile:
 
         self.lineno += 1
         if timestamp is None:
-            self.unparsed.append((self.lineno, line))
+            self.unparsed_count += 1
+            if len(self.unparsed) < MAX_KEPT_UNPARSED:
+                self.unparsed.append((self.lineno, line))
         # __next__ skips lines without timestamp or outside the time window
         if timestamp is None or not self.config.in_range(timestamp):
             raise NotInRange(f'line number {self.lineno} is not in timerange')

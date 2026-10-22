@@ -164,3 +164,13 @@ def test_logtype_force_timestamp_detects_audit(monkeypatch, tmp_path):
     logs = make_logs(tmp_path, {'audit.log': AUDIT})
     printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--force-timestamp')
     assert len(printed) == 1
+
+
+def test_logtype_lists_only_max_problems_and_counts_the_rest(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
+    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--max-problems', '1')
+    err = capsys.readouterr().err
+    assert exit_code == 1
+    assert err.count('Unable to determine logtype') == 1
+    assert '... and 2 more (see --max-problems)' in err
+    assert '0 lines without timestamp, 3 undetermined files' in err
