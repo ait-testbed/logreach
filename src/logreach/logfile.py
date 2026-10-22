@@ -9,35 +9,25 @@ import logging
 import re
 
 
+DEFAULT_TIMESTAMP_REGEX = {
+    LogType.SYSLOG: TimestampRegex.syslog,
+    LogType.AUDIT: TimestampRegex.audit,
+    LogType.ACCESS: TimestampRegex.access,
+}
+
+
 def config_factory(logfile_path: str, file_type: LogType, allow_empty_timestamp: bool = True,
                    datetimekey: Optional[str] = None, datetimeregex: Optional[str] = None,
                    begin: Optional[datetime] = None, end: Optional[datetime] = None) -> LogConfig:
-    if file_type == LogType.AUDIT:
-        if datetimeregex:
-            regex_pattern = re.compile(datetimeregex)
-        else:
-            regex_pattern = re.compile(TimestampRegex.audit.value)
-        return LogfileConfig(logfile_path=Path(logfile_path), regex_pattern=regex_pattern,
-                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
-    if file_type == LogType.ACCESS:
-        if datetimeregex:
-            regex_pattern = re.compile(datetimeregex)
-        else:
-            regex_pattern = re.compile(TimestampRegex.access.value)
-        return LogfileConfig(logfile_path=Path(logfile_path), regex_pattern=regex_pattern,
-                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
-    elif file_type == LogType.SYSLOG:
-        if datetimeregex:
-            regex_pattern = re.compile(datetimeregex)
-        else:
-            regex_pattern = re.compile(TimestampRegex.syslog.value)
-        return LogfileConfig(logfile_path=Path(logfile_path), regex_pattern=regex_pattern,
-                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
-    elif file_type == LogType.JSON:
+    if file_type == LogType.JSON:
         if not datetimekey:
             raise TypeError("json-type needs a datetimekey to identify the timestamp")
         return JsonLogfileConfig(logfile_path=Path(logfile_path), datetime_key=datetimekey,
                                  begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
+
+    regex = datetimeregex or DEFAULT_TIMESTAMP_REGEX[file_type].value
+    return LogfileConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
+                         begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 
 
 class Logfile:
