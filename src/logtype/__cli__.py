@@ -58,14 +58,12 @@ def main() -> None:
     parser.add_argument('--ignored-extension', help='comma separated list of ignored file-extensions',
                         default='.gz,.xz,.conf,.journal,.journal~')
     parser.add_argument('--ignorelist-file', help='a file with a list of ignored files. (regex supported)',
-                        required=False, default=DEFAULT_IGNORES_FILE)
-    parser.add_argument('--types-file', help='logtype configuration database',
-                        required=False, default=DEFAULT_TYPES_FILE)
-    parser.add_argument('--begin', help='filter from this timestamp on', required=False, type=parsed_datetime)
-    parser.add_argument('--end', help='filter logs until this timestamp',
-                        required=False, type=parsed_datetime)
+                        default=DEFAULT_IGNORES_FILE)
+    parser.add_argument('--types-file', help='logtype configuration database', default=DEFAULT_TYPES_FILE)
+    parser.add_argument('--begin', help='filter from this timestamp on', type=parsed_datetime)
+    parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
     parser.add_argument('--force-timestamp', help="Don't allow empty timestamp without stopping",
-                        action='store_true', default=False)
+                        action='store_true')
     args = parser.parse_args()
 
     logger = setup_logger()

@@ -49,12 +49,10 @@ def main() -> None:
         prog='logreach',
         description='Filters logfiles by extracting and comparing timestamps')
     parser.add_argument('--file', help='path to logfile', required=True)
-    parser.add_argument('--begin', help='filter from this timestamp on', required=False, type=parsed_datetime)
-    parser.add_argument('--end', help='filter logs until this timestamp',
-                        required=False, type=parsed_datetime)
+    parser.add_argument('--begin', help='filter from this timestamp on', type=parsed_datetime)
+    parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
     parser.add_argument('--datetimekey', help='datetimekey in json-log')
-    parser.add_argument('--datetimeregex',
-                        help='Regex with matching groups to find the datetime', required=False)
+    parser.add_argument('--datetimeregex', help='Regex with matching groups to find the datetime')
     parser.add_argument('--type', choices=[t.value for t in LogType], default=LogType.SYSLOG.value)
 
     args = parser.parse_args()
