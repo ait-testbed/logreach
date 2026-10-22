@@ -50,7 +50,7 @@ class TypesList:
                 item = json.loads(line)
                 self.data[item["logfile_path"]] = item
 
-    def is_in_database(self, path: str) -> bool:
+    def __contains__(self, path: str) -> bool:
         return path in self.data
 
 
@@ -77,7 +77,7 @@ class Analyzer:
         If the file is in the types database or matches the ignore list,
         it is skipped.
         """
-        if self._types and self._types.is_in_database(path):
+        if self._types and path in self._types:
             raise FoundInTypes
         if self._ignores and self._ignores.is_ignored(path):
             raise IgnoredFile
