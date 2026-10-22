@@ -1,13 +1,14 @@
-from logreach.exceptions import LogreachError, NotInRange, DateTimeNotFound
-from .schemas.logfileconfig import RegexLogConfig, LogConfig, JsonLogConfig, TimestampRegex, LogType
-from .schemas.logline import Logline
-from types import TracebackType
-from typing import Optional, Self, TextIO
-from datetime import datetime
-from pathlib import Path
 import logging
 import re
+from datetime import datetime
+from pathlib import Path
+from types import TracebackType
+from typing import Optional, Self, TextIO
 
+from logreach.exceptions import DateTimeNotFound, LogreachError, NotInRange
+
+from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
+from .schemas.logline import Logline
 
 DEFAULT_TIMESTAMP_REGEX = {
     LogType.SYSLOG: TimestampRegex.SYSLOG,
@@ -80,9 +81,6 @@ class Logfile:
         else:
             self.logger.warning("Won't close the file since it is not open")
 
-    def _parse_timestamp(self, line: str) -> Optional[datetime]:
-        return self.config.parse_timestamp(line)
-
     def readline(self) -> Optional[Logline]:
         if not self.filehandle:
             raise LogreachError("Logfile is not open for reading")
@@ -91,7 +89,7 @@ class Logfile:
         if not line:
             return None
 
-        timestamp = self._parse_timestamp(line)
+        timestamp = self.config.parse_timestamp(line)
         if timestamp is None and not self.config.allow_empty_timestamp:
             self.logger.error(f"Unable to parse timestamp: {line}")
             raise DateTimeNotFound("Timestamp not found")

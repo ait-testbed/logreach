@@ -1,21 +1,21 @@
-from logtype.exceptions import LogTypeError
-from logtype.exceptions import LogFileEmpty
-from logreach.logfile import Logfile
-from logreach.exceptions import LogreachError
-from logreach.schemas.logfileconfig import LogConfig
-from logreach.schemas.logline import Logline
 import argparse
 import logging
 import os
 import sys
+from datetime import datetime
+from typing import Any
+
+from dateutil.parser import parse
 from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
-from logtype.exceptions import SkipFile
-from logtype.analyzer import Analyzer, DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE
-from dateutil.parser import parse
-from datetime import datetime
-from typing import Any
+
+from logreach.exceptions import LogreachError
+from logreach.logfile import Logfile
+from logreach.schemas.logfileconfig import LogConfig
+from logreach.schemas.logline import Logline
+from logtype.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
+from logtype.exceptions import LogFileEmpty, LogTypeError, SkipFile
 
 
 def setup_logger() -> logging.Logger:

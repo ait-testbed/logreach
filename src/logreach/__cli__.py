@@ -1,15 +1,17 @@
-from logreach.logfile import Logfile, config_factory
-from logreach.schemas.logline import Logline
-from logreach.schemas.logfileconfig import LogType
-from dateutil.parser import parse
+import argparse
+import logging
+import sys
 from datetime import datetime
 from typing import Any
+
+from dateutil.parser import parse
 from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
-import argparse
-import sys
-import logging
+
+from logreach.logfile import Logfile, config_factory
+from logreach.schemas.logfileconfig import LogType
+from logreach.schemas.logline import Logline
 
 
 def setup_logger() -> logging.Logger:

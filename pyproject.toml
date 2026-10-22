@@ -25,6 +25,10 @@ where = ["src"]
 [tool.setuptools.dynamic]
 version = {attr = "logreach.metadata.__version__"}
 
+[tool.isort]
+line_length = 110
+src_paths = ["src", "tests"]
+
 [tool.mypy]
 explicit_package_bases = true
 

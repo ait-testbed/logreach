@@ -1,12 +1,13 @@
-from logtype.exceptions import FoundInTypes, IgnoredFile, LogTypeError, LogFileEmpty
-from logreach.exceptions import DateTimeKeyNotFound
-from logreach.schemas.logfileconfig import LogType, LogConfig
-from logreach.logfile import config_factory, Logfile
-import logging
 import json
-import re
+import logging
 import os
+import re
 from typing import Any, Optional
+
+from logreach.exceptions import DateTimeKeyNotFound
+from logreach.logfile import Logfile, config_factory
+from logreach.schemas.logfileconfig import LogConfig, LogType
+from logtype.exceptions import FoundInTypes, IgnoredFile, LogFileEmpty, LogTypeError
 
 # key that json detection reads the timestamp from
 DEFAULT_JSON_TIMESTAMP_KEY = "time"

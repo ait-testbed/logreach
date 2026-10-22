@@ -1,5 +1,7 @@
 import re
+
 import pytest
+
 from logreach.schemas.logfileconfig import TimestampRegex
 
 

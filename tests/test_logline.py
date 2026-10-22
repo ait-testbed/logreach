@@ -1,8 +1,9 @@
-from logreach.schemas.logline import Logline
 from datetime import datetime
+
+from logreach.schemas.logline import Logline
 
 
 def test_logfile_initialisation():
     timestamp: datetime = datetime.now()
-    msg: str = "some message"
-    assert Logline(timestamp=timestamp, msg=msg, lineno=10, filename="test")
+    raw: str = "Sep  1 14:08:07 host app: some message"
+    assert Logline(timestamp=timestamp, raw=raw, lineno=10, filename="test")

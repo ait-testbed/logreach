@@ -1,12 +1,14 @@
-from dataclasses import dataclass, field
-from typing import Pattern, Optional
-from pathlib import Path
-from datetime import datetime, timezone
-from enum import Enum
-from dateutil.parser import parse, ParserError
-from logreach.exceptions import DateTimeKeyNotFound
 import json
 import re
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Optional, Pattern
+
+from dateutil.parser import ParserError, parse
+
+from logreach.exceptions import DateTimeKeyNotFound
 
 
 class LogType(Enum):
