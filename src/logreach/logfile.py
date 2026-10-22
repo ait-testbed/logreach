@@ -1,5 +1,5 @@
 from logreach.exceptions import LogreachError, NotInRange, DateTimeNotFound
-from .schemas.logfileconfig import LogfileConfig, LogConfig, JsonLogfileConfig, TimestampRegex, LogType
+from .schemas.logfileconfig import RegexLogConfig, LogConfig, JsonLogConfig, TimestampRegex, LogType
 from .schemas.logline import Logline
 from types import TracebackType
 from typing import Optional, Self, TextIO
@@ -30,12 +30,12 @@ def config_factory(logfile_path: str, file_type: LogType, allow_empty_timestamp:
     if file_type == LogType.JSON:
         if not datetimekey:
             raise TypeError("json-type needs a datetimekey to identify the timestamp")
-        return JsonLogfileConfig(logfile_path=Path(logfile_path), datetime_key=datetimekey,
-                                 begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
+        return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetimekey,
+                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 
     regex = datetimeregex or DEFAULT_TIMESTAMP_REGEX[file_type].value
-    return LogfileConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
-                         begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
+    return RegexLogConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
+                          begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 
 
 class Logfile:

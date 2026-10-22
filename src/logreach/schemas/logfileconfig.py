@@ -39,7 +39,7 @@ class LogConfig:
 
 
 @dataclass
-class LogfileConfig(LogConfig):
+class RegexLogConfig(LogConfig):
     regex_pattern: Pattern[str]
     _unix_timestamp: bool = False
 
@@ -61,7 +61,7 @@ class LogfileConfig(LogConfig):
 
 
 @dataclass
-class JsonLogfileConfig(LogConfig):
+class JsonLogConfig(LogConfig):
     datetime_key: str
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
