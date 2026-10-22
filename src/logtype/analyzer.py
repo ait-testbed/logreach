@@ -10,6 +10,8 @@ from typing import Any, Optional
 
 # key that json detection reads the timestamp from
 DEFAULT_JSON_TIMESTAMP_KEY = "time"
+DEFAULT_TYPES_FILE = "logtypes.json"
+DEFAULT_IGNORES_FILE = "ignore_list.txt"
 
 
 def create_if_missing(path: str) -> None:
@@ -42,7 +44,7 @@ class IgnoreList:
 
 
 class KnownLogfilePaths:
-    def __init__(self, types_file: str = "logtypes.json"):
+    def __init__(self, types_file: str = DEFAULT_TYPES_FILE):
         self.types_file = types_file
         self.data: dict[str, dict[str, Any]] = {}
         self._read_file()
@@ -58,7 +60,7 @@ class KnownLogfilePaths:
 
 
 class Analyzer:
-    def __init__(self, types_file: str = "logtypes.json", ignores_file: str = "ignore_list.txt",
+    def __init__(self, types_file: str = DEFAULT_TYPES_FILE, ignores_file: str = DEFAULT_IGNORES_FILE,
                  auto_create: bool = True):
         if auto_create:
             create_if_missing(types_file)

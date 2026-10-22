@@ -53,7 +53,7 @@ def main() -> None:
     parser.add_argument('--datetimekey', help='datetimekey in json-log')
     parser.add_argument('--datetimeregex',
                         help="Regex with matching groups to find the datetime", required=False)
-    parser.add_argument('--type', choices=['syslog', 'audit', 'json', 'access'], default='syslog')
+    parser.add_argument('--type', choices=[t.value for t in LogType], default=LogType.SYSLOG.value)
 
     args = parser.parse_args()
 
