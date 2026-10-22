@@ -39,7 +39,7 @@ class IgnoreList:
 
     def is_ignored(self, path: str) -> bool:
         for pattern in self.patterns:
-            if re.search(pattern, path):
+            if pattern.search(path):
                 return True
         return False
 

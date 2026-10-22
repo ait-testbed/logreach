@@ -46,19 +46,21 @@ class RegexLogConfig(LogConfig):
     _unix_timestamp: bool = False
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
-        match = re.match(self.regex_pattern, logline)
-        if match:
-            raw_timestamp = match.group(1)
-            if self._unix_timestamp:
+        match = self.regex_pattern.match(logline)
+        if not match:
+            return None
+
+        raw_timestamp = match.group(1)
+        if self._unix_timestamp:
+            return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
+        try:
+            return parse(raw_timestamp, fuzzy=True)
+        except ParserError as e:
+            if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
+                self._unix_timestamp = True
                 return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
-            try:
-                return parse(raw_timestamp, fuzzy=True)
-            except ParserError as e:
-                if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
-                    self._unix_timestamp = True
-                    return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
-                else:
-                    print(e)
+            else:
+                print(e)
         return None
 
 

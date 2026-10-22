@@ -50,9 +50,10 @@ def format_logline(logline: Logline) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog='analyze_logfiles',
+        prog='logtype',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description='detects non-syslog logfiles in a directory')
+        description='Detects the log type of each file in a directory and prints its lines, '
+                    'optionally filtered by timestamp')
     parser.add_argument('--path', help='directory with logfiles', required=True)
     #  this does nothing at the moement (ignored etensions)
     parser.add_argument('--ignored-extension', help='comma separated list of ignored file-extensions',
@@ -89,10 +90,10 @@ def main() -> None:
                     continue
             except LogreachError as e:
                 eprint(f'{path}: {e}')
-                exit(1)
+                sys.exit(1)
             except LogTypeError as e:
                 eprint(e)
-                exit(1)
+                sys.exit(1)
             except SkipFile:
                 continue
 
