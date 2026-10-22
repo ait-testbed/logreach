@@ -23,9 +23,13 @@ class IgnoresList:
         self.compile_regex()
 
     def compile_regex(self) -> None:
+        """Compile one regex per line, skipping blank lines and # comments."""
         with open(self.ignorelist_file, 'r') as list_file:
             for line in list_file:
-                self.patterns.append(re.compile(line.rstrip('\n')))
+                pattern = line.strip()
+                if not pattern or pattern.startswith('#'):
+                    continue
+                self.patterns.append(re.compile(pattern))
 
     def is_ignored(self, filepath: str) -> bool:
         for pattern in self.patterns:
