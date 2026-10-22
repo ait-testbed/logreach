@@ -127,4 +127,4 @@ class Analyzer:
                 raise LogTypeError(f"Error in {path}: {e}")
             except LogTypeError:
                 continue  # try matching the next LogType
-        raise LogTypeError(f"(Unable to determine logtype for: {path}")
+        raise LogTypeError(f"Unable to determine logtype for: {path}")

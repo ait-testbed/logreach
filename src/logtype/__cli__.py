@@ -54,7 +54,8 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='detects non-syslog logfiles in a directory')
     parser.add_argument('--path', help='directory with logfiles', required=True)
-    parser.add_argument('--ignored-extension', help='comma seperated list of ignored file-extensions',
+    #  this does nothing at the moement (ignored etensions)
+    parser.add_argument('--ignored-extension', help='comma separated list of ignored file-extensions',
                         default=".gz,.xz,.conf,.journal,.journal~")
     parser.add_argument('--ignorelist-file', help="a file with a list of ignored files. (regex supported)",
                         required=False, default=DEFAULT_IGNORES_FILE)
