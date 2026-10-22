@@ -10,9 +10,9 @@ from logreach.schemas.logfileconfig import LogConfig, LogType
 from logtype.exceptions import FoundInTypes, IgnoredFile, LogFileEmpty, LogTypeError
 
 # key that json detection reads the timestamp from
-DEFAULT_JSON_TIMESTAMP_KEY = "time"
-DEFAULT_TYPES_FILE = "logtypes.json"
-DEFAULT_IGNORES_FILE = "ignore_list.txt"
+DEFAULT_JSON_TIMESTAMP_KEY = 'time'
+DEFAULT_TYPES_FILE = 'logtypes.json'
+DEFAULT_IGNORES_FILE = 'ignore_list.txt'
 
 
 def create_if_missing(path: str) -> None:
@@ -54,7 +54,7 @@ class KnownLogfilePaths:
         with open(self.types_file, 'r') as list_file:
             for line in list_file:
                 item = json.loads(line)
-                self.data[item["logfile_path"]] = item
+                self.data[item['logfile_path']] = item
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
@@ -102,12 +102,12 @@ class Analyzer:
             with Logfile(config, logger=logging.getLogger()) as lf:
                 first_line = next(lf, None)
         except UnicodeDecodeError:
-            raise LogTypeError(f"Unsupported filetype: {path}")
+            raise LogTypeError(f'Unsupported filetype: {path}')
         except json.decoder.JSONDecodeError:
-            raise LogTypeError(f"Not a valid json file: {path}")
+            raise LogTypeError(f'Not a valid json file: {path}')
 
         if first_line is None:
-            raise LogFileEmpty(f"{path} is empty")
+            raise LogFileEmpty(f'{path} is empty')
         return config
 
     def detect_config(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
@@ -124,7 +124,7 @@ class Analyzer:
             except LogFileEmpty:
                 raise
             except DateTimeKeyNotFound as e:
-                raise LogTypeError(f"Error in {path}: {e}")
+                raise LogTypeError(f'Error in {path}: {e}')
             except LogTypeError:
                 continue  # try matching the next LogType
-        raise LogTypeError(f"Unable to determine logtype for: {path}")
+        raise LogTypeError(f'Unable to determine logtype for: {path}')

@@ -30,7 +30,7 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     """
     if logtype == LogType.JSON:
         if not datetime_key:
-            raise TypeError("json-type needs a datetime_key to identify the timestamp")
+            raise TypeError('json-type needs a datetime_key to identify the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 
@@ -83,7 +83,7 @@ class Logfile:
 
     def readline(self) -> Optional[Logline]:
         if not self.filehandle:
-            raise LogreachError("Logfile is not open for reading")
+            raise LogreachError('Logfile is not open for reading')
 
         line = self.filehandle.readline()
         if not line:
@@ -91,13 +91,13 @@ class Logfile:
 
         timestamp = self.config.parse_timestamp(line)
         if timestamp is None and not self.config.allow_empty_timestamp:
-            self.logger.error(f"Unable to parse timestamp: {line}")
-            raise DateTimeNotFound("Timestamp not found")
+            self.logger.error(f'Unable to parse timestamp: {line}')
+            raise DateTimeNotFound('Timestamp not found')
 
         self.lineno += 1
         # __next__ skips lines without timestamp or outside the time window
         if timestamp is None or not self.config.in_range(timestamp):
-            raise NotInRange(f"line number {self.lineno} is not in timerange")
+            raise NotInRange(f'line number {self.lineno} is not in timerange')
 
         return Logline(timestamp=timestamp, raw=line, lineno=self.lineno,
                        filename=str(self.config.logfile_path))

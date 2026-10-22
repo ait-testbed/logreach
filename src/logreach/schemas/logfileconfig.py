@@ -12,10 +12,10 @@ from logreach.exceptions import DateTimeKeyNotFound
 
 
 class LogType(Enum):
-    SYSLOG = "syslog"
-    AUDIT = "audit"
-    ACCESS = "access"
-    JSON = "json"
+    SYSLOG = 'syslog'
+    AUDIT = 'audit'
+    ACCESS = 'access'
+    JSON = 'json'
 
 
 class TimestampRegex(Enum):
@@ -70,5 +70,5 @@ class JsonLogConfig(LogConfig):
         record = json.loads(logline)
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
-                f"Unable to find timestamp-key \"{self.datetime_key}\" in json-string: {record}")
+                f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
         return parse(record[self.datetime_key])

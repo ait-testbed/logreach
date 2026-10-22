@@ -15,17 +15,17 @@ from logreach.schemas.logline import Logline
 
 
 def setup_logger() -> logging.Logger:
-    DATEFMT = "%Y-%m-%dT%H:%M:%SZ"
-    FORMAT = "%(message)s"
+    DATEFMT = '%Y-%m-%dT%H:%M:%SZ'
+    FORMAT = '%(message)s'
     if sys.stderr.isatty():
         handler = RichHandler(console=Console(stderr=True))
-        FORMAT = "%(message)s"
+        FORMAT = '%(message)s'
     else:
-        FORMAT = "%(asctime)s\t%(levelname)s\t%(message)s"
+        FORMAT = '%(asctime)s\t%(levelname)s\t%(message)s'
         handler = logging.StreamHandler()
 
     logging.basicConfig(
-        level="NOTSET", format=FORMAT, datefmt=DATEFMT, handlers=[handler]
+        level='NOTSET', format=FORMAT, datefmt=DATEFMT, handlers=[handler]
     )
 
     logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def main() -> None:
                         required=False, type=parsed_datetime)
     parser.add_argument('--datetimekey', help='datetimekey in json-log')
     parser.add_argument('--datetimeregex',
-                        help="Regex with matching groups to find the datetime", required=False)
+                        help='Regex with matching groups to find the datetime', required=False)
     parser.add_argument('--type', choices=[t.value for t in LogType], default=LogType.SYSLOG.value)
 
     args = parser.parse_args()
@@ -75,5 +75,5 @@ def main() -> None:
         sys.exit(1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
