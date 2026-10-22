@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: blacksmith-2vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up uv (Python 3.14)
-        uses: astral-sh/setup-uv@v5
+      # no python-version given: uv picks up 3.14 from .python-version
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6.6.0
         with:
-          python-version: "3.14"
           enable-cache: true
 
       - name: Install dependencies
-        run: uv pip install -e .[dev]
+        run: uv sync --locked --group docs
 
       - name: Configure Git user
         run: |
@@ -39,13 +39,13 @@ jobs:
           # Extract version from tag (remove 'v' prefix if present)
           VERSION=${GITHUB_REF_NAME#v}
           echo "Deploying version $VERSION"
-          uv run mike deploy --push --update-aliases $VERSION latest
+          uv run --group docs mike deploy --push --update-aliases $VERSION latest
           # Optional: make the released version the default shown when visiting the site
           # it's enough to run this once
-          # uv run mike set-default --push latest
+          # uv run --group docs mike set-default --push latest
 
       - name: Deploy branch docs
         if: github.event_name == 'push'
         run: |
           echo "Deploying docs for branch $GITHUB_REF_NAME"
-          uv run mike deploy --push --title "$GITHUB_REF_NAME (unreleased)" "$GITHUB_REF_NAME"
+          uv run --group docs mike deploy --push --title "$GITHUB_REF_NAME (unreleased)" "$GITHUB_REF_NAME"

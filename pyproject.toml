@@ -1,6 +1,6 @@
 [project]
 name = "logreach"
-description = "Add your description here"
+description = "Filter logfiles by timestamp and detect the log type of files in a directory"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -36,4 +36,8 @@ explicit_package_bases = true
 dev = [
     "prek>=0.4.3",
     "pytest>=9.1.0"
+]
+docs = [
+    "mike>=2.2.0",
+    "pymdown-extensions>=10.0",
 ]
