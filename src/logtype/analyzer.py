@@ -74,11 +74,11 @@ class Analyzer:
     def ignores(self) -> Optional[IgnoreList]:
         return self._ignores
 
-    def is_ignored(self, path: str) -> bool:
+    def should_skip(self, path: str) -> bool:
         """Decides wether logtype should skip a file or not.
 
-        If the file is in the types database or matches the ignore list,
-        it is skipped.
+        If the file is in the known logfile paths or matches the ignore
+        list, it is skipped.
         """
         if self._types and path in self._types:
             raise FoundInTypes

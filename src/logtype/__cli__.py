@@ -76,7 +76,7 @@ def main() -> None:
         for file in files:
             path = os.path.join(root, file)
             try:
-                analyzer.is_ignored(path)
+                analyzer.should_skip(path)
                 config: LogConfig = analyzer.detect_config(
                     path, allow_empty_timestamp=not args.force_timestamp)
                 config.begin = args.begin
