@@ -19,6 +19,14 @@ DEFAULT_TIMESTAMP_REGEX = {
 def config_factory(logfile_path: str, file_type: LogType, allow_empty_timestamp: bool = True,
                    datetimekey: Optional[str] = None, datetimeregex: Optional[str] = None,
                    begin: Optional[datetime] = None, end: Optional[datetime] = None) -> LogConfig:
+    """Build the config that tells Logfile how to read timestamps from a
+    logfile.
+
+    For json: the timestamp is read from the field datetimekey, which is
+    required (TypeError otherwise).
+    For syslog, audit and access: the timestamp is the first group of datetimeregex, or of the type's
+    default regex from TimestampRegex if none is given.
+    """
     if file_type == LogType.JSON:
         if not datetimekey:
             raise TypeError("json-type needs a datetimekey to identify the timestamp")
