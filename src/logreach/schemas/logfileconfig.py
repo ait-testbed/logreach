@@ -55,12 +55,10 @@ class RegexLogConfig(LogConfig):
             return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
         try:
             return parse(raw_timestamp, fuzzy=True)
-        except ParserError as e:
+        except ParserError:
             if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
                 self._unix_timestamp = True
                 return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
-            else:
-                print(e)
         return None
 
 

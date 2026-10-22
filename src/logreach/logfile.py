@@ -44,6 +44,8 @@ class Logfile:
         self.config: LogConfig = config
         self.filehandle: Optional[TextIO] = None
         self.lineno: int = 0
+        # (lineno, line) of every line skipped because it has no timestamp
+        self.unparsed: list[tuple[int, str]] = []
         self.open()
         self.logger = logger
 
@@ -95,6 +97,8 @@ class Logfile:
             raise DateTimeNotFound('Timestamp not found')
 
         self.lineno += 1
+        if timestamp is None:
+            self.unparsed.append((self.lineno, line))
         # __next__ skips lines without timestamp or outside the time window
         if timestamp is None or not self.config.in_range(timestamp):
             raise NotInRange(f'line number {self.lineno} is not in timerange')

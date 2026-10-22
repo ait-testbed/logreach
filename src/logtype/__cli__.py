@@ -40,6 +40,20 @@ def parsed_datetime(datetime_str: str) -> datetime:
     return parse(datetime_str, fuzzy=True)
 
 
+# lines without timestamp reported per file at the end of a run
+MAX_REPORTED_LINES = 5
+
+
+def report_unparsed(path: str, unparsed: list[tuple[int, str]]) -> list[str]:
+    """Describe the lines of path that had no timestamp, at most
+    MAX_REPORTED_LINES."""
+    report = [f'{path}:{lineno}: no timestamp: {line.rstrip()}'
+              for lineno, line in unparsed[:MAX_REPORTED_LINES]]
+    if len(unparsed) > MAX_REPORTED_LINES:
+        report.append(f'{path}: ... and {len(unparsed) - MAX_REPORTED_LINES} more lines without timestamp')
+    return report
+
+
 def eprint(*args: Any, **kwargs: Any) -> None:
     print(*args, file=sys.stderr, **kwargs)
 
@@ -70,6 +84,7 @@ def main() -> None:
     logger = setup_logger()
 
     ignore_empty = True
+    problems: list[str] = []  # reported at the end, so a run never stops halfway
 
     analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
     for (root, dirs, files) in os.walk(args.path, followlinks=True):
@@ -84,6 +99,7 @@ def main() -> None:
                 with Logfile(config, logger=logger) as lf:
                     for line in lf:
                         format_logline(line)
+                problems.extend(report_unparsed(path, lf.unparsed))
             # must come before LogTypeError, which LogFileEmpty subclasses
             except LogFileEmpty:
                 if ignore_empty:
@@ -92,10 +108,15 @@ def main() -> None:
                 eprint(f'{path}: {e}')
                 sys.exit(1)
             except LogTypeError as e:
-                eprint(e)  # no log type fits: report and go on with the next file
+                problems.append(str(e))  # no log type fits
                 continue
             except SkipFile:
                 continue
+
+    if problems:
+        # plain stderr instead of rich, which would treat [...] in log lines as markup
+        sys.stderr.write('\nProblems found:\n' + ''.join(f'  {problem}\n' for problem in problems))
+        sys.exit(1)
 
 
 if __name__ == '__main__':
