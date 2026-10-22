@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Local logtype data (defaults for --types-file / --ignorelist-file)
+logtypes.json
+logtypes.json_
+ignore_list.txt
+ignore_list.txt_

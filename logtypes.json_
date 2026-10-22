@@ -1,5 +1,0 @@
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/docker/logs/log/audit/audit.log", "type": "audit"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/docker/logs/nclog/audit.log", "type": "audit"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/docker/logs/nclog/nextcloud.log", "type": "json", "datetime_key": "time"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/docker/logs/nclog/nextcloud.log.1", "type": "json", "datetime_key": "time"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/docker/logs/containers/c967c80b76149b7c208bbe6ec62cc9c5b182e254aba7c3cf1d9993acff24b9a5/c967c80b76149b7c208bbe6ec62cc9c5b182e254aba7c3cf1d9993acff24b9a5-json.log", "type": "json", "datetime_key": "time"}

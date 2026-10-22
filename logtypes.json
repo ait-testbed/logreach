@@ -1,4 +1,0 @@
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/videoserver/logs/log/zm/web_php.log", "type": "syslog", "datetimeregex": "\\A(.+?UTC)"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/videoserver/logs/log/zm/web_php.log.1", "type": "syslog", "datetimeregex": "\\A(.+?UTC)"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/gather/inetfw/logs/log/suricata/eve.json", "type": "json", "datetimekey": "timestamp"}
-{"logfile_path": "/media/tmp/dataset_01_09_2026/otfirewall/2026-09-01-14:33:08/attack/eve.json", "type": "json", "datetimekey": "timestamp"}
