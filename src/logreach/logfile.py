@@ -16,24 +16,24 @@ DEFAULT_TIMESTAMP_REGEX = {
 }
 
 
-def config_factory(logfile_path: str, file_type: LogType, allow_empty_timestamp: bool = True,
-                   datetimekey: Optional[str] = None, datetimeregex: Optional[str] = None,
+def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
+                   datetime_key: Optional[str] = None, datetime_regex: Optional[str] = None,
                    begin: Optional[datetime] = None, end: Optional[datetime] = None) -> LogConfig:
     """Build the config that tells Logfile how to read timestamps from a
     logfile.
 
-    For json: the timestamp is read from the field datetimekey, which is
+    For json: the timestamp is read from the field datetime_key, which is
     required (TypeError otherwise).
-    For syslog, audit and access: the timestamp is the first group of datetimeregex, or of the type's
+    For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
     """
-    if file_type == LogType.JSON:
-        if not datetimekey:
-            raise TypeError("json-type needs a datetimekey to identify the timestamp")
-        return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetimekey,
+    if logtype == LogType.JSON:
+        if not datetime_key:
+            raise TypeError("json-type needs a datetime_key to identify the timestamp")
+        return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 
-    regex = datetimeregex or DEFAULT_TIMESTAMP_REGEX[file_type].value
+    regex = datetime_regex or DEFAULT_TIMESTAMP_REGEX[logtype].value
     return RegexLogConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
                           begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
 

@@ -59,8 +59,8 @@ def main() -> None:
 
     logger: logging.Logger = setup_logger()
 
-    config = config_factory(args.file, LogType(args.type), datetimekey=args.datetimekey,
-                            datetimeregex=args.datetimeregex, begin=args.begin, end=args.end)
+    config = config_factory(args.file, LogType(args.type), datetime_key=args.datetimekey,
+                            datetime_regex=args.datetimeregex, begin=args.begin, end=args.end)
 
     try:
         with Logfile(config, logger=logger) as lf:

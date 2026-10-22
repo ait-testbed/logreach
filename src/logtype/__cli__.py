@@ -74,11 +74,11 @@ def main() -> None:
     scanner = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
     for (root, dirs, files) in os.walk(args.path, followlinks=True):
         for file in files:
-            full_path = os.path.join(root, file)
+            path = os.path.join(root, file)
             try:
-                scanner.is_ignored(full_path)
+                scanner.is_ignored(path)
                 config: LogConfig = scanner.detect_config(
-                    full_path, allow_empty_timestamp=not args.force_timestamp)
+                    path, allow_empty_timestamp=not args.force_timestamp)
                 config.begin = args.begin
                 config.end = args.end
                 with Logfile(config, logger=logger) as lf:
@@ -88,7 +88,7 @@ def main() -> None:
                 if ignore_empty:
                     continue
             except LogreachError as e:
-                eprint(f"{full_path}: {e}")
+                eprint(f"{path}: {e}")
                 exit(1)
             except LogTypeException as e:
                 eprint(e)

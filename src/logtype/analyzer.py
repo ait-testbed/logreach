@@ -17,36 +17,36 @@ def create_if_missing(path: str) -> None:
 
 
 class IgnoresList:
-    def __init__(self, ignorelist_file: str):
-        self.ignorelist_file = ignorelist_file
+    def __init__(self, ignores_file: str):
+        self.ignores_file = ignores_file
         self.patterns: list[re.Pattern[str]] = []
         self.compile_regex()
 
     def compile_regex(self) -> None:
         """Compile one regex per line, skipping blank lines and # comments."""
-        with open(self.ignorelist_file, 'r') as list_file:
+        with open(self.ignores_file, 'r') as list_file:
             for line in list_file:
                 pattern = line.strip()
                 if not pattern or pattern.startswith('#'):
                     continue
                 self.patterns.append(re.compile(pattern))
 
-    def is_ignored(self, filepath: str) -> bool:
+    def is_ignored(self, path: str) -> bool:
         for pattern in self.patterns:
-            if re.search(pattern, filepath):
+            if re.search(pattern, path):
                 return True
         return False
 
 
 class TypesList:
     def __init__(self, types_file: str = "logtypes.json"):
-        self.file = types_file
+        self.types_file = types_file
         self.data: dict[str, dict[str, Any]] = {}
         self._read_file()
 
     def _read_file(self) -> None:
-        with open(self.file, 'r') as types_file:
-            for line in types_file:
+        with open(self.types_file, 'r') as list_file:
+            for line in list_file:
                 item = json.loads(line)
                 self.data[item["logfile_path"]] = item
 
@@ -71,15 +71,15 @@ class Analyzer:
     def ignores(self) -> Optional[IgnoresList]:
         return self._ignores
 
-    def is_ignored(self, full_path: str) -> bool:
+    def is_ignored(self, path: str) -> bool:
         """Decides wether logtype should skip a file or not.
 
         If the file is in the types database or matches the ignore list,
         it is skipped.
         """
-        if self._types and self._types.is_in_database(full_path):
+        if self._types and self._types.is_in_database(path):
             raise FoundInTypes
-        if self._ignores and self._ignores.is_ignored(full_path):
+        if self._ignores and self._ignores.is_ignored(path):
             raise IgnoredFile
         return True
 
@@ -90,7 +90,7 @@ class Analyzer:
         is empty, raise LogFileEmpty.
         """
 
-        config = config_factory(path, logtype, datetimekey="time",
+        config = config_factory(path, logtype, datetime_key="time",
                                 allow_empty_timestamp=allow_empty_timestamp)
         try:
             # get back first line that parses as logtype
@@ -105,7 +105,7 @@ class Analyzer:
             raise LogFileEmpty(f"{path} is empty")
         return config
 
-    def detect_config(self, full_path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+    def detect_config(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
         """Try each log type on the file and return the config of the first one
         that works.
 
@@ -114,12 +114,12 @@ class Analyzer:
 
         for logtype in LogType:
             try:
-                config = self._try_logtype(full_path, logtype, allow_empty_timestamp=allow_empty_timestamp)
+                config = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
                 return config
             except LogFileEmpty as e:
                 raise e
             except DateTimeKeyNotFound as e:
-                raise LogTypeException(f"Error in {full_path}: {e}")
+                raise LogTypeException(f"Error in {path}: {e}")
             except LogTypeException:
                 continue  # try matching the next LogType
-        raise LogTypeException(f"(Unable to determine logtype for: {full_path}")
+        raise LogTypeException(f"(Unable to determine logtype for: {path}")
