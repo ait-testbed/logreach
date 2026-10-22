@@ -8,6 +8,9 @@ import re
 import os
 from typing import Any, Optional
 
+# key that json detection reads the timestamp from
+DEFAULT_JSON_TIMESTAMP_KEY = "time"
+
 
 def create_if_missing(path: str) -> None:
     """Create an empty file at path unless it exists or path is empty."""
@@ -90,7 +93,7 @@ class Analyzer:
         empty, raise LogFileEmpty.
         """
 
-        config = config_factory(path, logtype, datetime_key="time",
+        config = config_factory(path, logtype, datetime_key=DEFAULT_JSON_TIMESTAMP_KEY,
                                 allow_empty_timestamp=allow_empty_timestamp)
         try:
             # get back first line that parses as logtype
@@ -115,6 +118,7 @@ class Analyzer:
         for logtype in LogType:
             try:
                 return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
+            # must come before LogTypeError, which LogFileEmpty subclasses
             except LogFileEmpty:
                 raise
             except DateTimeKeyNotFound as e:
