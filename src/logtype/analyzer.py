@@ -4,15 +4,26 @@ import os
 import re
 from typing import Any, Optional
 
-from logreach.exceptions import DateTimeKeyNotFound
+from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
-from logtype.exceptions import FoundInTypes, IgnoredFile, LogFileEmpty, LogTypeError
+from logtype.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
 
-# key that json detection reads the timestamp from
-DEFAULT_JSON_TIMESTAMP_KEY = 'time'
+# keys that json detection looks for, in this order
+JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts')
+# specific formats first: the loose syslog regex would match many other formats too
+DETECTION_ORDER = (LogType.JSON, LogType.AUDIT, LogType.ACCESS, LogType.SYSLOG)
 DEFAULT_TYPES_FILE = 'logtypes.json'
 DEFAULT_IGNORES_FILE = 'ignore_list.txt'
+
+
+def json_timestamp_key(path: str) -> Optional[str]:
+    """Return the first known timestamp key in the file's first line."""
+    with open(path, 'r') as logfile:
+        record = json.loads(logfile.readline())
+    if not isinstance(record, dict):
+        return None
+    return next((key for key in JSON_TIMESTAMP_KEYS if key in record), None)
 
 
 def create_if_missing(path: str) -> None:
@@ -59,6 +70,13 @@ class KnownLogfilePaths:
     def __contains__(self, path: str) -> bool:
         return path in self.data
 
+    def config_for(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+        """Build the config stored for path in the types file."""
+        entry = self.data[path]
+        return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
+                              datetime_key=entry.get('datetimekey'),
+                              datetime_regex=entry.get('datetimeregex'))
+
 
 class Analyzer:
     def __init__(self, types_file: str = DEFAULT_TYPES_FILE, ignores_file: str = DEFAULT_IGNORES_FILE,
@@ -78,13 +96,7 @@ class Analyzer:
         return self._ignores
 
     def check_not_skipped(self, path: str) -> None:
-        """Raise a SkipFile subclass if logtype should skip the file.
-
-        Raises FoundInTypes if the path is a known logfile path and
-        IgnoredFile if it matches the ignore list.
-        """
-        if self._types and path in self._types:
-            raise FoundInTypes
+        """Raise IgnoredFile if the path matches the ignore list."""
         if self._ignores and self._ignores.is_ignored(path):
             raise IgnoredFile
 
@@ -94,10 +106,14 @@ class Analyzer:
         If yes return config if no raise LogTypeError. If the file is
         empty, raise LogFileEmpty.
         """
-
-        config = config_factory(path, logtype, datetime_key=DEFAULT_JSON_TIMESTAMP_KEY,
-                                allow_empty_timestamp=allow_empty_timestamp)
+        if os.path.getsize(path) == 0:
+            raise LogFileEmpty(f'{path} is empty')
         try:
+            datetime_key = json_timestamp_key(path) if logtype == LogType.JSON else None
+            if logtype == LogType.JSON and datetime_key is None:
+                raise LogTypeError(f'No known timestamp key in {path}')
+            config = config_factory(path, logtype, datetime_key=datetime_key,
+                                    allow_empty_timestamp=allow_empty_timestamp)
             # get back first line that parses as logtype
             with Logfile(config, logger=logging.getLogger()) as lf:
                 first_line = next(lf, None)
@@ -107,24 +123,24 @@ class Analyzer:
             raise LogTypeError(f'Not a valid json file: {path}')
 
         if first_line is None:
-            raise LogFileEmpty(f'{path} is empty')
+            raise LogTypeError(f'No line in {path} parses as {logtype.value}')
         return config
 
     def detect_config(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
-        """Try each log type on the file and return the config of the first one
-        that works.
+        """Return the config from the types file, or of the first log type in
+        DETECTION_ORDER that can read the file.
 
         If none work, raise LogTypeError.
         """
+        if self._types and path in self._types:
+            return self._types.config_for(path, allow_empty_timestamp)
 
-        for logtype in LogType:
+        for logtype in DETECTION_ORDER:
             try:
                 return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
             # must come before LogTypeError, which LogFileEmpty subclasses
             except LogFileEmpty:
                 raise
-            except DateTimeKeyNotFound as e:
-                raise LogTypeError(f'Error in {path}: {e}')
-            except LogTypeError:
+            except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
                 continue  # try matching the next LogType
         raise LogTypeError(f'Unable to determine logtype for: {path}')

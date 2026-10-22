@@ -92,8 +92,8 @@ def main() -> None:
                 eprint(f'{path}: {e}')
                 sys.exit(1)
             except LogTypeError as e:
-                eprint(e)
-                sys.exit(1)
+                eprint(e)  # no log type fits: report and go on with the next file
+                continue
             except SkipFile:
                 continue
 
