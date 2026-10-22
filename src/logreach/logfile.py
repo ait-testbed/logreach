@@ -101,5 +101,5 @@ class Logfile:
         if timestamp is None or not self.config.in_range(timestamp):
             raise NotInRange(f"line number {self.lineno} is not in timerange")
 
-        return Logline(timestamp=timestamp, msg=line, lineno=self.lineno,
+        return Logline(timestamp=timestamp, raw=line, lineno=self.lineno,
                        filename=str(self.config.logfile_path))

@@ -46,15 +46,15 @@ class RegexLogConfig(LogConfig):
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         match = re.match(self.regex_pattern, logline)
         if match:
-            parsed_match = match.group(1)
+            raw_timestamp = match.group(1)
             if self._unix_timestamp:
-                return datetime.fromtimestamp(float(parsed_match), timezone.utc)
+                return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
             try:
-                return parse(parsed_match, fuzzy=True)
+                return parse(raw_timestamp, fuzzy=True)
             except ParserError as e:
-                if re.match(r'\A\d+\.\d+\Z', parsed_match):
+                if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
                     self._unix_timestamp = True
-                    return datetime.fromtimestamp(float(parsed_match), timezone.utc)
+                    return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
                 else:
                     print(e)
         return None
@@ -65,8 +65,8 @@ class JsonLogConfig(LogConfig):
     datetime_key: str
 
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
-        json_object = json.loads(logline)
-        if self.datetime_key not in json_object:
+        record = json.loads(logline)
+        if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
-                f"Unable to find timestamp-key \"{self.datetime_key}\" in json-string: {json_object}")
-        return parse(json_object[self.datetime_key])
+                f"Unable to find timestamp-key \"{self.datetime_key}\" in json-string: {record}")
+        return parse(record[self.datetime_key])

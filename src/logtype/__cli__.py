@@ -1,4 +1,4 @@
-from logtype.exceptions import LogTypeException
+from logtype.exceptions import LogTypeError
 from logtype.exceptions import LogFileEmpty
 from logreach.logfile import Logfile
 from logreach.exceptions import LogreachError
@@ -11,7 +11,7 @@ import sys
 from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
-from logtype.exceptions import Ignores
+from logtype.exceptions import SkipFile
 from logtype.analyzer import Analyzer
 from dateutil.parser import parse
 from datetime import datetime
@@ -71,29 +71,30 @@ def main() -> None:
 
     ignore_empty = True
 
-    scanner = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
+    analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
     for (root, dirs, files) in os.walk(args.path, followlinks=True):
         for file in files:
             path = os.path.join(root, file)
             try:
-                scanner.is_ignored(path)
-                config: LogConfig = scanner.detect_config(
+                analyzer.is_ignored(path)
+                config: LogConfig = analyzer.detect_config(
                     path, allow_empty_timestamp=not args.force_timestamp)
                 config.begin = args.begin
                 config.end = args.end
                 with Logfile(config, logger=logger) as lf:
                     for line in lf:
                         format_logline(line)
+            # must come before LogTypeError, which LogFileEmpty subclasses
             except LogFileEmpty:
                 if ignore_empty:
                     continue
             except LogreachError as e:
                 eprint(f"{path}: {e}")
                 exit(1)
-            except LogTypeException as e:
+            except LogTypeError as e:
                 eprint(e)
                 exit(1)
-            except Ignores:
+            except SkipFile:
                 continue
 
 

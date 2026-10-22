@@ -5,6 +5,6 @@ from datetime import datetime
 @dataclass
 class Logline:
     timestamp: datetime
-    msg: str
+    raw: str
     lineno: int
     filename: str

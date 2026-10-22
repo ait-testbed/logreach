@@ -1,18 +1,19 @@
 class LogreachError(Exception):
-    """Top-level exception for logreach errors."""
+    """Base class for errors while reading logfiles."""
 
 
 class ParseTimestampError(LogreachError):
-    """Exceptions created while parsing the timestamp."""
+    """Raised when a timestamp cannot be parsed."""
 
 
 class NotInRange(LogreachError):
-    """Exceptions created if the timestamp is not between begin and end."""
+    """Raised when a timestamp is outside the begin/end time window."""
 
 
 class DateTimeKeyNotFound(LogreachError):
-    """Exceptions created if the timestamp can't be found in json-files."""
+    """Raised when a JSON line has no field with the timestamp key."""
 
 
 class DateTimeNotFound(LogreachError):
-    """Exceptions created if the timestamp is None."""
+    """Raised when a line has no timestamp and empty timestamps are not
+    allowed."""

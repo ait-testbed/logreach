@@ -1,4 +1,4 @@
-from logtype.exceptions import FoundInTypes, IgnoredFile, LogTypeException, LogFileEmpty
+from logtype.exceptions import FoundInTypes, IgnoredFile, LogTypeError, LogFileEmpty
 from logreach.exceptions import DateTimeKeyNotFound
 from logreach.schemas.logfileconfig import LogType, LogConfig
 from logreach.logfile import config_factory, Logfile
@@ -86,8 +86,8 @@ class Analyzer:
     def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
         """Can this file be read as logtype?
 
-        If yes return config if no raise LogTypeException. If the file
-        is empty, raise LogFileEmpty.
+        If yes return config if no raise LogTypeError. If the file is
+        empty, raise LogFileEmpty.
         """
 
         config = config_factory(path, logtype, datetime_key="time",
@@ -97,9 +97,9 @@ class Analyzer:
             with Logfile(config, logger=logging.getLogger()) as lf:
                 first_line = next(lf, None)
         except UnicodeDecodeError:
-            raise LogTypeException(f"Unsupported filetype: {path}")
+            raise LogTypeError(f"Unsupported filetype: {path}")
         except json.decoder.JSONDecodeError:
-            raise LogTypeException(f"Not a valid json file: {path}")
+            raise LogTypeError(f"Not a valid json file: {path}")
 
         if first_line is None:
             raise LogFileEmpty(f"{path} is empty")
@@ -109,17 +109,16 @@ class Analyzer:
         """Try each log type on the file and return the config of the first one
         that works.
 
-        If none work, raise LogTypeException.
+        If none work, raise LogTypeError.
         """
 
         for logtype in LogType:
             try:
-                config = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-                return config
-            except LogFileEmpty as e:
-                raise e
+                return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
+            except LogFileEmpty:
+                raise
             except DateTimeKeyNotFound as e:
-                raise LogTypeException(f"Error in {path}: {e}")
-            except LogTypeException:
+                raise LogTypeError(f"Error in {path}: {e}")
+            except LogTypeError:
                 continue  # try matching the next LogType
-        raise LogTypeException(f"(Unable to determine logtype for: {path}")
+        raise LogTypeError(f"(Unable to determine logtype for: {path}")
