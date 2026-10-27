@@ -98,13 +98,13 @@ class Logfile:
         line = self.filehandle.readline()
         if not line:
             return None
+        self.lineno += 1
 
         timestamp = self.config.parse_timestamp(line)
         if timestamp is None and not self.config.allow_empty_timestamp:
-            self.logger.error(f'Unable to parse timestamp: {line}')
-            raise DateTimeNotFound('Timestamp not found')
+            self.logger.error(f'Unable to parse timestamp in line {self.lineno}: {line}')
+            raise DateTimeNotFound(f'Timestamp not found in line {self.lineno}')
 
-        self.lineno += 1
         if timestamp is None:
             self.unparsed_count += 1
             if len(self.unparsed) < MAX_KEPT_UNPARSED:
