@@ -30,6 +30,8 @@ class LogConfig:
     begin: Optional[datetime] = field(default=None, kw_only=True)
     end: Optional[datetime] = field(default=None, kw_only=True)
     allow_empty_timestamp: bool = field(default=True, kw_only=True)
+    # read ambiguous dates like 1/9/2026 as 1 September; also flips ISO dates, so set it only per file
+    dayfirst: bool = field(default=False, kw_only=True)
 
     def in_range(self, timestamp: datetime) -> bool:
         after_begin = self.begin is None or timestamp >= self.begin
@@ -74,7 +76,7 @@ class RegexLogConfig(LogConfig):
         if self._unix_timestamp:
             return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
         try:
-            return parse(raw_timestamp, fuzzy=True, default=self.default_datetime)
+            return parse(raw_timestamp, fuzzy=True, default=self.default_datetime, dayfirst=self.dayfirst)
         except ParserError:
             if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
                 self._unix_timestamp = True
@@ -94,4 +96,4 @@ class JsonLogConfig(LogConfig):
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
                 f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
-        return parse(record[self.datetime_key], default=self.default_datetime)
+        return parse(record[self.datetime_key], default=self.default_datetime, dayfirst=self.dayfirst)

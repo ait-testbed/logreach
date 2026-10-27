@@ -100,6 +100,20 @@ def test_detect_config_uses_types_file(tmp_path):
     assert config.regex_pattern.pattern == r'\A(.+?UTC)'
 
 
+@pytest.mark.parametrize('entry, dayfirst', [
+    pytest.param({'dayfirst': True}, True, id='set'),
+    pytest.param({}, False, id='default'),
+])
+def test_detect_config_reads_dayfirst_from_types_file(tmp_path, entry, dayfirst):
+    logfile = tmp_path / 'suricata.log'
+    logfile.write_text('1/9/2026 -- 13:25:40 - <Info> x\n')
+    types_file = tmp_path / 'logtypes.json'
+    types_file.write_text(json.dumps({'logfile_path': str(logfile), 'type': 'syslog', **entry}) + '\n')
+    config = Analyzer(types_file=str(types_file), ignores_file='').detect_config(str(logfile))
+    assert config.dayfirst is dayfirst
+    assert config.parse_timestamp(logfile.read_text()).month == (9 if dayfirst else 1)
+
+
 # --- ignore list and types file
 
 def test_ignore_list_skips_blank_lines_and_comments(tmp_path):

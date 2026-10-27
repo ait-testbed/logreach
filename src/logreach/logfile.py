@@ -22,7 +22,8 @@ DEFAULT_TIMESTAMP_REGEX = {
 
 def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
                    datetime_key: Optional[str] = None, datetime_regex: Optional[str] = None,
-                   begin: Optional[datetime] = None, end: Optional[datetime] = None) -> LogConfig:
+                   begin: Optional[datetime] = None, end: Optional[datetime] = None,
+                   dayfirst: bool = False) -> LogConfig:
     """Build the config that tells Logfile how to read timestamps from a
     logfile.
 
@@ -30,16 +31,19 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     required (TypeError otherwise).
     For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
+    dayfirst reads ambiguous dates like 1/9/2026 as day/month.
     """
     if logtype == LogType.JSON:
         if not datetime_key:
             raise TypeError('json-type needs a datetime_key to identify the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
-                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
+                             begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
+                             dayfirst=dayfirst)
 
     regex = datetime_regex or DEFAULT_TIMESTAMP_REGEX[logtype].value
     return RegexLogConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
-                          begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp)
+                          begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
+                          dayfirst=dayfirst)
 
 
 class Logfile:

@@ -53,6 +53,8 @@ def main() -> None:
     parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
     parser.add_argument('--datetimekey', help='datetimekey in json-log')
     parser.add_argument('--datetimeregex', help='Regex with matching groups to find the datetime')
+    parser.add_argument('--dayfirst', action='store_true',
+                        help='read ambiguous dates like 1/9/2026 as day/month (1 September)')
     parser.add_argument('--type', choices=[t.value for t in LogType], default=LogType.SYSLOG.value)
 
     args = parser.parse_args()
@@ -60,7 +62,8 @@ def main() -> None:
     logger: logging.Logger = setup_logger()
 
     config = config_factory(args.file, LogType(args.type), datetime_key=args.datetimekey,
-                            datetime_regex=args.datetimeregex, begin=args.begin, end=args.end)
+                            datetime_regex=args.datetimeregex, begin=args.begin, end=args.end,
+                            dayfirst=args.dayfirst)
 
     try:
         with Logfile(config, logger=logger) as lf:

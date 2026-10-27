@@ -75,7 +75,8 @@ class KnownLogfilePaths:
         entry = self.data[path]
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
-                              datetime_regex=entry.get('datetimeregex'))
+                              datetime_regex=entry.get('datetimeregex'),
+                              dayfirst=entry.get('dayfirst', False))
 
 
 class Analyzer:
