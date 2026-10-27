@@ -6,8 +6,8 @@ __deprecated__ = False
 __email__ = 'aecid@ait.ac.at'
 __website__ = 'https://aecid.ait.ac.at'
 __license__ = 'EUPL-1.2'
-__maintainer__ = 'Wolfgang Hotwagner, Max Landauer, Markus Wurzenberger, Florian Skopik'
-__status__ = 'Production'
+__maintainer__ = 'Wolfgang Hotwagner'
+__status__ = 'Development'
 __version__ = '0.0.1'
 __version_string__ = (
     f'(Austrian Institute of Technology)\t'
