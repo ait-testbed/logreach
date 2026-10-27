@@ -47,15 +47,20 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
 
 
 class Logfile:
+    """Reads the lines of a logfile that are in the config's time window.
+
+    The file is opened by `with Logfile(...)` (or open()) and closed on
+    leaving the block (or close()), not when the object is created.
+    """
+
     def __init__(self, config: LogConfig, logger: logging.Logger):
         self.config: LogConfig = config
+        self.logger = logger
         self.filehandle: Optional[TextIO] = None
         self.lineno: int = 0
         # lines skipped because they have no timestamp: the first few as (lineno, line), and a count
         self.unparsed: list[tuple[int, str]] = []
         self.unparsed_count: int = 0
-        self.open()
-        self.logger = logger
 
     def __enter__(self) -> Self:
         self.open()
