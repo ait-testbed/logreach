@@ -36,6 +36,16 @@ class LogConfig:
         before_end = self.end is None or timestamp <= self.end
         return after_begin and before_end
 
+    @property
+    def default_datetime(self) -> Optional[datetime]:
+        """Supplies the parts a timestamp lacks, e.g. the year of classic
+        syslog stamps: January 1st of the year of begin (or end).
+
+        None means today, as dateutil does by default.
+        """
+        reference = self.begin or self.end
+        return datetime(reference.year, 1, 1) if reference else None
+
     def parse_timestamp(self, logline: str) -> Optional[datetime]:
         pass
 
@@ -64,7 +74,7 @@ class RegexLogConfig(LogConfig):
         if self._unix_timestamp:
             return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
         try:
-            return parse(raw_timestamp, fuzzy=True)
+            return parse(raw_timestamp, fuzzy=True, default=self.default_datetime)
         except ParserError:
             if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
                 self._unix_timestamp = True
@@ -84,4 +94,4 @@ class JsonLogConfig(LogConfig):
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
                 f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
-        return parse(record[self.datetime_key])
+        return parse(record[self.datetime_key], default=self.default_datetime)
