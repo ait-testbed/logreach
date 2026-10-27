@@ -91,10 +91,10 @@ def main() -> None:
                         action='store_true')
     parser.add_argument('--max-problems', type=int, default=50,
                         help='problems listed at the end of the run; the rest are only counted')
-    parser.add_argument('--check', action='store_true',
-                        help="only show each file's detected type and the problems, not the log lines")
     parser.add_argument('--fail-fast', action='store_true',
                         help='stop at the first problem instead of reporting all problems at the end')
+    parser.add_argument('--check', action='store_true',
+                        help="show each file's detected type instead of its lines, to find problems fast")
     args = parser.parse_args()
 
     logger = setup_logger()
@@ -107,7 +107,7 @@ def main() -> None:
     analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
     for (root, dirs, files) in os.walk(args.path, followlinks=True):
         for file in files:
-            if args.fail_fast and problems:
+            if args.fail_fast and problems:  # fail early
                 exit_with_report(problems, args.max_problems, unparsed_lines, undetermined_files)
             path = os.path.join(root, file)
             try:
@@ -116,6 +116,9 @@ def main() -> None:
                     path, allow_empty_timestamp=not args.force_timestamp)
                 config.begin = args.begin
                 config.end = args.end
+                if args.check:
+                    # plain stdout instead of rich, which would wrap long paths
+                    sys.stdout.write(f'{path}: {config.describe()}\n')
                 with Logfile(config, logger=logger) as lf:
                     for line in lf:
                         # checked before printing: reading this line may have skipped one without timestamp
@@ -123,8 +126,6 @@ def main() -> None:
                             break
                         if not args.check:
                             format_logline(line)
-                if args.check:
-                    sys.stdout.write(f'{path}: {config.describe()}\n')
                 problems.extend(report_unparsed(path, lf))
                 unparsed_lines += lf.unparsed_count
             # must come before LogTypeError, which LogFileEmpty subclasses
