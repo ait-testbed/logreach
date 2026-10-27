@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from types import TracebackType
-from typing import Optional, Self, TextIO
+from typing import Self, TextIO
 
 from logreach.exceptions import DateTimeNotFound, LogreachError, NotInRange
 
@@ -21,8 +21,8 @@ DEFAULT_TIMESTAMP_REGEX = {
 
 
 def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
-                   datetime_key: Optional[str] = None, datetime_regex: Optional[str] = None,
-                   begin: Optional[datetime] = None, end: Optional[datetime] = None,
+                   datetime_key: str | None = None, datetime_regex: str | None = None,
+                   begin: datetime | None = None, end: datetime | None = None,
                    dayfirst: bool = False) -> LogConfig:
     """Build the config that tells Logfile how to read timestamps from a
     logfile.
@@ -56,7 +56,7 @@ class Logfile:
     def __init__(self, config: LogConfig, logger: logging.Logger):
         self.config: LogConfig = config
         self.logger = logger
-        self.filehandle: Optional[TextIO] = None
+        self.filehandle: TextIO | None = None
         self.lineno: int = 0
         # lines skipped because they have no timestamp: the first few as (lineno, line), and a count
         self.unparsed: list[tuple[int, str]] = []
@@ -66,8 +66,8 @@ class Logfile:
         self.open()
         return self
 
-    def __exit__(self, exc_type: Optional[type[BaseException]], exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
+    def __exit__(self, exc_type: type[BaseException] | None, exc_value: BaseException | None,
+                 traceback: TracebackType | None) -> None:
         self.close()
 
     def __iter__(self) -> Self:
@@ -96,7 +96,7 @@ class Logfile:
         else:
             self.logger.warning("Won't close the file since it is not open")
 
-    def readline(self) -> Optional[Logline]:
+    def readline(self) -> Logline | None:
         if not self.filehandle:
             raise LogreachError('Logfile is not open for reading')
 

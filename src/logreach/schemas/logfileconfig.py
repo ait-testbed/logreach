@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Pattern
+from typing import Pattern
 
 from dateutil.parser import ParserError, parse
 
@@ -27,8 +27,8 @@ class TimestampRegex(Enum):
 @dataclass
 class LogConfig:
     logfile_path: Path
-    begin: Optional[datetime] = field(default=None, kw_only=True)
-    end: Optional[datetime] = field(default=None, kw_only=True)
+    begin: datetime | None = field(default=None, kw_only=True)
+    end: datetime | None = field(default=None, kw_only=True)
     allow_empty_timestamp: bool = field(default=True, kw_only=True)
     # read ambiguous dates like 1/9/2026 as 1 September; also flips ISO dates, so set it only per file
     dayfirst: bool = field(default=False, kw_only=True)
@@ -39,7 +39,7 @@ class LogConfig:
         return after_begin and before_end
 
     @property
-    def default_datetime(self) -> Optional[datetime]:
+    def default_datetime(self) -> datetime | None:
         """Supplies the parts a timestamp lacks, e.g. the year of classic
         syslog stamps: January 1st of the year of begin (or end).
 
@@ -48,7 +48,7 @@ class LogConfig:
         reference = self.begin or self.end
         return datetime(reference.year, 1, 1) if reference else None
 
-    def parse_timestamp(self, logline: str) -> Optional[datetime]:
+    def parse_timestamp(self, logline: str) -> datetime | None:
         pass
 
     def describe(self) -> str:
@@ -67,7 +67,7 @@ class RegexLogConfig(LogConfig):
         except ValueError:  # not one of the built-in regexes
             return f'custom regex {self.regex_pattern.pattern}'
 
-    def parse_timestamp(self, logline: str) -> Optional[datetime]:
+    def parse_timestamp(self, logline: str) -> datetime | None:
         match = self.regex_pattern.match(logline)
         if not match:
             return None
@@ -91,7 +91,7 @@ class JsonLogConfig(LogConfig):
     def describe(self) -> str:
         return f'json ({self.datetime_key})'
 
-    def parse_timestamp(self, logline: str) -> Optional[datetime]:
+    def parse_timestamp(self, logline: str) -> datetime | None:
         record = json.loads(logline)
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(

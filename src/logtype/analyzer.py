@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
 from logreach.logfile import Logfile, config_factory
@@ -17,7 +17,7 @@ DEFAULT_TYPES_FILE = 'logtypes.json'
 DEFAULT_IGNORES_FILE = 'ignore_list.txt'
 
 
-def json_timestamp_key(path: str) -> Optional[str]:
+def json_timestamp_key(path: str) -> str | None:
     """Return the first known timestamp key in the file's first line."""
     with open(path, 'r') as logfile:
         record = json.loads(logfile.readline())
@@ -95,7 +95,7 @@ class Analyzer:
         self._ignores = IgnoreList(ignores_file, ignored_extensions)
 
     @property
-    def types(self) -> Optional[KnownLogfilePaths]:
+    def types(self) -> KnownLogfilePaths | None:
         return self._types
 
     @property
