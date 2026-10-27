@@ -125,6 +125,28 @@ def test_ignore_list_skips_blank_lines_and_comments(tmp_path):
     assert not ignores.is_ignored('/var/log/syslog')
 
 
+@pytest.mark.parametrize('path, ignored', [
+    ('/var/log/syslog.1.gz', True),
+    ('/var/log/journal/system.journal~', True),
+    ('/etc/app.conf', True),  # extension given without dot
+    ('/etc/app.config', False),
+    ('/var/log/gz', False),
+    ('/var/log/syslog', False),
+])
+def test_ignore_list_ignores_extensions(path, ignored):
+    ignores = IgnoreList(extensions=['.gz', '.journal~', 'conf'])
+    assert ignores.is_ignored(path) is ignored
+
+
+def test_ignore_list_combines_file_and_extensions(tmp_path):
+    ignore_file = tmp_path / 'ignore_list.txt'
+    ignore_file.write_text('README\n')
+    ignores = IgnoreList(str(ignore_file), extensions=['.gz'])
+    assert ignores.is_ignored('/var/log/README')
+    assert ignores.is_ignored('/var/log/syslog.1.gz')
+    assert not ignores.is_ignored('/var/log/syslog')
+
+
 def test_known_logfile_paths_contains_listed_paths(tmp_path):
     types_file = tmp_path / 'logtypes.json'
     types_file.write_text('{"logfile_path": "/var/log/suricata/eve.json", "type": "json"}\n')
@@ -168,10 +190,27 @@ def test_logtype_reports_lines_without_timestamp_at_the_end(monkeypatch, tmp_pat
 
 
 def test_logtype_skips_ignored_files(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG})
-    (tmp_path / 'ignore_list.txt').write_text('\\.gz\\Z\n')
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.old': SYSLOG})  # .old is no default extension
+    (tmp_path / 'ignore_list.txt').write_text('\\.old\\Z\n')
     printed, _ = run_logtype(monkeypatch, tmp_path, logs)
     assert {line.filename for line in printed} == {str(logs / 'syslog')}
+
+
+def test_logtype_skips_default_ignored_extensions(monkeypatch, tmp_path):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
+    printed, _ = run_logtype(monkeypatch, tmp_path, logs)
+    assert {line.filename for line in printed} == {str(logs / 'syslog')}
+
+
+@pytest.mark.parametrize('extensions, read', [
+    pytest.param('', {'syslog', 'syslog.1.gz', 'app.conf'}, id='none'),
+    pytest.param('.conf', {'syslog', 'syslog.1.gz'}, id='custom'),
+    pytest.param(' .conf , gz ', {'syslog'}, id='spaces-and-no-dot'),
+])
+def test_logtype_ignored_extension_option(monkeypatch, tmp_path, extensions, read):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
+    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--ignored-extension', extensions)
+    assert {line.filename for line in printed} == {str(logs / name) for name in read}
 
 
 def test_logtype_force_timestamp_detects_audit(monkeypatch, tmp_path):

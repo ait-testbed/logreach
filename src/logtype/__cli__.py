@@ -79,9 +79,8 @@ def main() -> None:
         description='Detects the log type of each file in a directory and prints its lines, '
                     'optionally filtered by timestamp')
     parser.add_argument('--path', help='directory with logfiles', required=True)
-    #  this does nothing at the moement (ignored etensions)
-    parser.add_argument('--ignored-extension', help='comma separated list of ignored file-extensions',
-                        default='.gz,.xz,.conf,.journal,.journal~')
+    parser.add_argument('--ignored-extension', default='.gz,.xz,.conf,.journal,.journal~',
+                        help="comma separated list of ignored file extensions, '' for none")
     parser.add_argument('--ignorelist-file', help='a file with a list of ignored files. (regex supported)',
                         default=DEFAULT_IGNORES_FILE)
     parser.add_argument('--types-file', help='logtype configuration database', default=DEFAULT_TYPES_FILE)
@@ -99,12 +98,14 @@ def main() -> None:
 
     logger = setup_logger()
 
-    ignore_empty = True
     problems: list[str] = []  # reported at the end, so a run never stops halfway
     unparsed_lines = 0
     undetermined_files = 0
 
-    analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file)
+    ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
+                          if extension.strip()]
+    analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
+                        ignored_extensions=ignored_extensions)
     for (root, dirs, files) in os.walk(args.path, followlinks=True):
         for file in files:
             if args.fail_fast and problems:  # fail early
@@ -130,17 +131,15 @@ def main() -> None:
                 unparsed_lines += lf.unparsed_count
             # must come before LogTypeError, which LogFileEmpty subclasses
             except LogFileEmpty:
-                if ignore_empty:
-                    continue
+                pass  # nothing to read or report
             except LogreachError as e:
                 eprint(f'{path}: {e}')
                 sys.exit(1)
             except LogTypeError as e:
                 problems.append(str(e))  # no log type fits
                 undetermined_files += 1
-                continue
             except SkipFile:
-                continue
+                pass
 
     if problems:
         exit_with_report(problems, args.max_problems, unparsed_lines, undetermined_files)

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
 from logreach.logfile import Logfile, config_factory
@@ -34,10 +34,12 @@ def create_if_missing(path: str) -> None:
 
 
 class IgnoreList:
-    def __init__(self, ignores_file: str):
+    def __init__(self, ignores_file: str = '', extensions: Iterable[str] = ()):
         self.ignores_file = ignores_file
         self.patterns: list[re.Pattern[str]] = []
-        self.compile_regex()
+        if ignores_file:
+            self.compile_regex()
+        self.add_extensions(extensions)
 
     def compile_regex(self) -> None:
         """Compile one regex per line, skipping blank lines and # comments."""
@@ -48,11 +50,15 @@ class IgnoreList:
                     continue
                 self.patterns.append(re.compile(pattern))
 
+    def add_extensions(self, extensions: Iterable[str]) -> None:
+        """Ignore paths ending in one of extensions, e.g. '.gz' or 'gz'."""
+        for extension in extensions:
+            if not extension.startswith('.'):
+                extension = '.' + extension
+            self.patterns.append(re.compile(re.escape(extension) + r'\Z'))
+
     def is_ignored(self, path: str) -> bool:
-        for pattern in self.patterns:
-            if pattern.search(path):
-                return True
-        return False
+        return any(pattern.search(path) for pattern in self.patterns)
 
 
 class KnownLogfilePaths:
@@ -81,24 +87,25 @@ class KnownLogfilePaths:
 
 class Analyzer:
     def __init__(self, types_file: str = DEFAULT_TYPES_FILE, ignores_file: str = DEFAULT_IGNORES_FILE,
-                 auto_create: bool = True):
+                 auto_create: bool = True, ignored_extensions: Iterable[str] = ()):
         if auto_create:
             create_if_missing(types_file)
             create_if_missing(ignores_file)
         self._types = KnownLogfilePaths(types_file) if types_file else None
-        self._ignores = IgnoreList(ignores_file) if ignores_file else None
+        self._ignores = IgnoreList(ignores_file, ignored_extensions)
 
     @property
     def types(self) -> Optional[KnownLogfilePaths]:
         return self._types
 
     @property
-    def ignores(self) -> Optional[IgnoreList]:
+    def ignores(self) -> IgnoreList:
         return self._ignores
 
     def check_not_skipped(self, path: str) -> None:
-        """Raise IgnoredFile if the path matches the ignore list."""
-        if self._ignores and self._ignores.is_ignored(path):
+        """Raise IgnoredFile if the path matches the ignore list or has an
+        ignored extension."""
+        if self._ignores.is_ignored(path):
             raise IgnoredFile
 
     def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
