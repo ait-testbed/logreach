@@ -213,10 +213,19 @@ def test_logtype_ignored_extension_option(monkeypatch, tmp_path, extensions, rea
     assert {line.filename for line in printed} == {str(logs / name) for name in read}
 
 
-def test_logtype_force_timestamp_detects_audit(monkeypatch, tmp_path):
+def test_logtype_require_timestamp_detects_audit(monkeypatch, tmp_path):
     logs = make_logs(tmp_path, {'audit.log': AUDIT})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--force-timestamp')
+    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
     assert len(printed) == 1
+
+
+def test_logtype_require_timestamp_stops_at_first_line_without_timestamp(monkeypatch, tmp_path, capsys):
+    lines = SYSLOG.splitlines(keepends=True)
+    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
+    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
+    assert [line.lineno for line in printed] == [1]
+    assert exit_code == 1
+    assert f'{logs / "syslog"}: Timestamp not found in line 2' in capsys.readouterr().err
 
 
 def test_logtype_lists_only_max_problems_and_counts_the_rest(monkeypatch, tmp_path, capsys):

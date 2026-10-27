@@ -86,8 +86,8 @@ def main() -> None:
     parser.add_argument('--types-file', help='logtype configuration database', default=DEFAULT_TYPES_FILE)
     parser.add_argument('--begin', help='filter from this timestamp on', type=parsed_datetime)
     parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
-    parser.add_argument('--force-timestamp', help="Don't allow empty timestamp without stopping",
-                        action='store_true')
+    parser.add_argument('--require-timestamp', action='store_true',
+                        help='stop at the first line without a timestamp')
     parser.add_argument('--max-problems', type=int, default=50,
                         help='problems listed at the end of the run; the rest are only counted')
     parser.add_argument('--fail-fast', action='store_true',
@@ -114,7 +114,7 @@ def main() -> None:
             try:
                 analyzer.check_not_skipped(path)
                 config: LogConfig = analyzer.detect_config(
-                    path, allow_empty_timestamp=not args.force_timestamp)
+                    path, allow_empty_timestamp=not args.require_timestamp)
                 config.begin = args.begin
                 config.end = args.end
                 if args.check:
