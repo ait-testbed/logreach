@@ -81,3 +81,17 @@ def test_dayfirst_decides_ambiguous_dates(line, dayfirst, expected):
 def test_dayfirst_json():
     config = config_factory('app.json', LogType.JSON, datetime_key='time', dayfirst=True)
     assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)
+
+
+def test_logfile_skips_lines_outside_window_and_without_timestamp(tmp_path):
+    logfile = tmp_path / 'syslog'
+    logfile.write_text('Sep  1 13:00:00 host app: before\n'
+                       'Sep  1 14:00:00 host app: inside\n'
+                       'no timestamp\n'
+                       'Sep  1 15:00:00 host app: after\n'
+                       'Sep  1 14:30:00 host app: inside again\n')
+    config = config_factory(str(logfile), LogType.SYSLOG, begin=datetime(2026, 9, 1, 13, 30),
+                            end=datetime(2026, 9, 1, 14, 45))
+    with Logfile(config, logger=logging.getLogger()) as lf:
+        assert [line.lineno for line in lf] == [2, 5]
+    assert lf.unparsed == [(3, 'no timestamp\n')]
