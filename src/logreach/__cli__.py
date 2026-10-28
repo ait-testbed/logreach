@@ -58,6 +58,8 @@ def main() -> None:
     parser.add_argument('--type', choices=[t.value for t in LogType], default=LogType.SYSLOG.value)
 
     args = parser.parse_args()
+    if args.type == LogType.JSON.value and not args.datetimekey:
+        parser.error('--type json requires --datetimekey')
 
     logger: logging.Logger = setup_logger()
 
