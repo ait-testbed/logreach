@@ -1,13 +1,10 @@
 import json
-import sys
 
 import pytest
 
-import logtype.__cli__ as cli
+from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
+from logreach.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
-from logreach.schemas.logline import Logline
-from logtype.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
-from logtype.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
 
 SYSLOG = ('Sep  1 14:08:07 videoserver systemd[1]: Started Session 16 of user superuser.\n'
           'Sep  1 14:09:00 videoserver systemd[1]: Started Session 17 of user superuser.\n')
@@ -24,35 +21,6 @@ def detect(tmp_path, content: str) -> LogConfig:
     logfile = tmp_path / 'logfile'
     logfile.write_text(content)
     return Analyzer(types_file='', ignores_file='').detect_config(str(logfile))
-
-
-def make_logs(tmp_path, files: dict[str, str | bytes]):
-    """Create tmp_path/logs containing files (name -> content)."""
-    logs = tmp_path / 'logs'
-    logs.mkdir()
-    for name, content in files.items():
-        if isinstance(content, bytes):
-            (logs / name).write_bytes(content)
-        else:
-            (logs / name).write_text(content)
-    return logs
-
-
-def run_logtype(monkeypatch, tmp_path, logs_dir, *extra_args: str) -> tuple[list[Logline], int]:
-    """Run the logtype CLI on logs_dir and return the lines it would print and
-    its exit code."""
-    printed: list[Logline] = []
-    monkeypatch.setattr(cli, 'format_logline', printed.append)
-    monkeypatch.setattr(sys, 'argv', [
-        'logtype', '--path', str(logs_dir),
-        '--ignorelist-file', str(tmp_path / 'ignore_list.txt'),
-        '--types-file', str(tmp_path / 'logtypes.json'),
-        *extra_args])
-    try:
-        cli.main()
-    except SystemExit as e:
-        return printed, e.code
-    return printed, 0
 
 
 # --- type detection
@@ -162,104 +130,3 @@ def test_check_not_skipped_raises_for_ignored_paths(tmp_path):
     with pytest.raises(IgnoredFile):
         analyzer.check_not_skipped('/var/log/syslog.1.gz')
     analyzer.check_not_skipped('/var/log/syslog')
-
-
-# --- logtype CLI
-
-def test_logtype_prints_syslog_lines(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert [line.lineno for line in printed] == [1, 2]
-    assert exit_code == 0
-
-
-def test_logtype_reports_undetectable_file_at_the_end(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'binary': bytes(range(256))})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert len(printed) == 2  # the syslog file is still printed completely
-    assert exit_code == 1
-    assert f'Unable to determine logtype for: {logs / "binary"}' in capsys.readouterr().err
-
-
-def test_logtype_reports_lines_without_timestamp_at_the_end(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG + '[info] no timestamp here\n'})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert len(printed) == 2
-    assert exit_code == 1
-    assert f'{logs / "syslog"}:3: no timestamp: [info] no timestamp here' in capsys.readouterr().err
-
-
-def test_logtype_skips_ignored_files(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.old': SYSLOG})  # .old is no default extension
-    (tmp_path / 'ignore_list.txt').write_text('\\.old\\Z\n')
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
-
-
-def test_logtype_skips_default_ignored_extensions(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
-
-
-@pytest.mark.parametrize('extensions, read', [
-    pytest.param('', {'syslog', 'syslog.1.gz', 'app.conf'}, id='none'),
-    pytest.param('.conf', {'syslog', 'syslog.1.gz'}, id='custom'),
-    pytest.param(' .conf , gz ', {'syslog'}, id='spaces-and-no-dot'),
-])
-def test_logtype_ignored_extension_option(monkeypatch, tmp_path, extensions, read):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--ignored-extension', extensions)
-    assert {line.filename for line in printed} == {str(logs / name) for name in read}
-
-
-def test_logtype_require_timestamp_detects_audit(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'audit.log': AUDIT})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
-    assert len(printed) == 1
-
-
-def test_logtype_require_timestamp_stops_at_first_line_without_timestamp(monkeypatch, tmp_path, capsys):
-    lines = SYSLOG.splitlines(keepends=True)
-    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
-    assert [line.lineno for line in printed] == [1]
-    assert exit_code == 1
-    assert f'{logs / "syslog"}: Timestamp not found in line 2' in capsys.readouterr().err
-
-
-def test_logtype_lists_only_max_problems_and_counts_the_rest(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
-    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--max-problems', '1')
-    err = capsys.readouterr().err
-    assert exit_code == 1
-    assert err.count('Unable to determine logtype') == 1
-    assert '... and 2 more (see --max-problems)' in err
-    assert '0 lines without timestamp, 3 undetermined files' in err
-
-
-def test_logtype_fail_fast_stops_at_first_undetermined_file(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
-    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
-    assert exit_code == 1
-    assert capsys.readouterr().err.count('Unable to determine logtype') == 1
-
-
-def test_logtype_fail_fast_stops_within_a_file(monkeypatch, tmp_path, capsys):
-    lines = SYSLOG.splitlines(keepends=True)
-    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
-    assert [line.lineno for line in printed] == [1]  # line 3 is never printed
-    assert exit_code == 1
-    assert ':2: no timestamp: no timestamp' in capsys.readouterr().err
-
-
-def test_logtype_check_shows_types_instead_of_lines(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'eve.json': EVE_JSON})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--check')
-    assert printed == []
-    assert exit_code == 0
-    assert sorted(capsys.readouterr().out.splitlines()) == [
-        f'{logs / "eve.json"}: json (timestamp)',
-        f'{logs / "syslog"}: syslog',
-    ]
