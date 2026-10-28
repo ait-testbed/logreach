@@ -4,10 +4,9 @@ import os
 import re
 from typing import Any, Iterable
 
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
+from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, IgnoredFile, LogFileEmpty, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
-from logtype.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
 
 # keys that json detection looks for, in this order
 JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts')
