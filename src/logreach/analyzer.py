@@ -36,7 +36,8 @@ def create_if_missing(path: str) -> None:
 class IgnoreList:
     def __init__(self, ignores_file: str = '', extensions: Iterable[str] = ()):
         self.ignores_file = ignores_file
-        self.patterns: list[re.Pattern[str]] = []
+        # (compiled regex, where it comes from for ignore_reason())
+        self.patterns: list[tuple[re.Pattern[str], str]] = []
         if ignores_file:
             self.compile_regex()
         self.add_extensions(extensions)
@@ -48,17 +49,22 @@ class IgnoreList:
                 pattern = line.strip()
                 if not pattern or pattern.startswith('#'):
                     continue
-                self.patterns.append(re.compile(pattern))
+                self.patterns.append((re.compile(pattern), f'{self.ignores_file} pattern {pattern}'))
 
     def add_extensions(self, extensions: Iterable[str]) -> None:
         """Ignore paths ending in one of extensions, e.g. '.gz' or 'gz'."""
         for extension in extensions:
             if not extension.startswith('.'):
                 extension = '.' + extension
-            self.patterns.append(re.compile(re.escape(extension) + r'\Z'))
+            self.patterns.append((re.compile(re.escape(extension) + r'\Z'), f'extension {extension}'))
 
-    def is_ignored(self, path: str) -> bool:
-        return any(pattern.search(path) for pattern in self.patterns)
+    def ignore_reason(self, path: str) -> str | None:
+        """Name the first pattern that matches path, e.g. 'extension .gz', or
+        None if path is not ignored."""
+        for pattern, source in self.patterns:
+            if pattern.search(path):
+                return source
+        return None
 
 
 class KnownLogfilePaths:

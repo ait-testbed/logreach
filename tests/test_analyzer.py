@@ -88,9 +88,9 @@ def test_ignore_list_skips_blank_lines_and_comments(tmp_path):
     ignore_file = tmp_path / 'ignore_list.txt'
     ignore_file.write_text('# compressed logs\n\\.gz\\Z  \n\n   \n')
     ignores = IgnoreList(str(ignore_file))
-    assert [pattern.pattern for pattern in ignores.patterns] == ['\\.gz\\Z']
-    assert ignores.is_ignored('/var/log/syslog.1.gz')
-    assert not ignores.is_ignored('/var/log/syslog')
+    assert [pattern.pattern for pattern, _source in ignores.patterns] == ['\\.gz\\Z']
+    assert ignores.ignore_reason('/var/log/syslog.1.gz') is not None
+    assert ignores.ignore_reason('/var/log/syslog') is None
 
 
 @pytest.mark.parametrize('path, ignored', [
@@ -103,16 +103,16 @@ def test_ignore_list_skips_blank_lines_and_comments(tmp_path):
 ])
 def test_ignore_list_ignores_extensions(path, ignored):
     ignores = IgnoreList(extensions=['.gz', '.journal~', 'conf'])
-    assert ignores.is_ignored(path) is ignored
+    assert (ignores.ignore_reason(path) is not None) is ignored
 
 
 def test_ignore_list_combines_file_and_extensions(tmp_path):
     ignore_file = tmp_path / 'ignore_list.txt'
     ignore_file.write_text('README\n')
     ignores = IgnoreList(str(ignore_file), extensions=['.gz'])
-    assert ignores.is_ignored('/var/log/README')
-    assert ignores.is_ignored('/var/log/syslog.1.gz')
-    assert not ignores.is_ignored('/var/log/syslog')
+    assert ignores.ignore_reason('/var/log/README') is not None
+    assert ignores.ignore_reason('/var/log/syslog.1.gz') is not None
+    assert ignores.ignore_reason('/var/log/syslog') is None
 
 
 def test_known_logfile_paths_contains_listed_paths(tmp_path):
@@ -123,10 +123,19 @@ def test_known_logfile_paths_contains_listed_paths(tmp_path):
     assert '/var/log/syslog' not in known
 
 
+def test_ignore_list_names_the_matching_pattern(tmp_path):
+    ignore_file = tmp_path / 'ignore_list.txt'
+    ignore_file.write_text('README\\Z\n')
+    ignores = IgnoreList(str(ignore_file), extensions=['gz'])
+    assert ignores.ignore_reason('/var/log/README') == f'{ignore_file} pattern README\\Z'
+    assert ignores.ignore_reason('/var/log/syslog.1.gz') == 'extension .gz'
+    assert ignores.ignore_reason('/var/log/syslog') is None
+
+
 def test_analyzer_ignores_paths_from_ignores_file_and_extensions(tmp_path):
     ignores_file = tmp_path / 'ignore_list.txt'
     ignores_file.write_text('README\\Z\n')
     analyzer = Analyzer(types_file='', ignores_file=str(ignores_file), ignored_extensions=['.gz'])
-    assert analyzer.ignores.is_ignored('/var/log/README')
-    assert analyzer.ignores.is_ignored('/var/log/syslog.1.gz')
-    assert not analyzer.ignores.is_ignored('/var/log/syslog')
+    assert analyzer.ignores.ignore_reason('/var/log/README') is not None
+    assert analyzer.ignores.ignore_reason('/var/log/syslog.1.gz') is not None
+    assert analyzer.ignores.ignore_reason('/var/log/syslog') is None

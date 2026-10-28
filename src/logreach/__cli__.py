@@ -155,17 +155,16 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def iter_logfiles(path: str, analyzer: Analyzer) -> Iterator[str]:
-    """Yield path if it is a file, else every file below it that is not
-    ignored."""
+def iter_logfiles(path: str, analyzer: Analyzer) -> Iterator[tuple[str, str | None]]:
+    """Yield (file, why it is ignored or None): path itself if it is a file,
+    else every file below it."""
     if not os.path.isdir(path):
-        yield path  # named explicitly, so the ignore list does not apply
+        yield path, None  # named explicitly, so the ignore list does not apply
         return
     for root, _dirs, files in os.walk(path, followlinks=True):
         for file in files:
             filepath = os.path.join(root, file)
-            if not analyzer.ignores.is_ignored(filepath):
-                yield filepath
+            yield filepath, analyzer.ignores.ignore_reason(filepath)
 
 
 def make_config(path: str, args: argparse.Namespace, analyzer: Analyzer) -> LogConfig:
@@ -187,12 +186,23 @@ def make_config(path: str, args: argparse.Namespace, analyzer: Analyzer) -> LogC
     return config
 
 
-def process_file(path: str, args: argparse.Namespace, analyzer: Analyzer, logger: logging.Logger,
-                 problems: Problems) -> None:
+def process_file(path: str, ignored: str | None, args: argparse.Namespace, analyzer: Analyzer,
+                 logger: logging.Logger, problems: Problems) -> None:
     """Print the lines of one logfile (or only its type with --check) and
-    collect its problems."""
-    if os.path.getsize(path) == 0:
-        return  # nothing to read or report
+    collect its problems.
+
+    Ignored and empty files are skipped; --check shows why.
+    """
+    skip_reason = None
+    if ignored:
+        skip_reason = f'ignored: {ignored}'
+    elif os.path.getsize(path) == 0:
+        skip_reason = 'empty'
+    if skip_reason:
+        if args.check:
+            sys.stdout.write(f'{path}: skipped ({skip_reason})\n')
+        return  # skipped files are no problems
+
     try:
         config = make_config(path, args, analyzer)
     except LogTypeError as e:
@@ -224,9 +234,9 @@ def main() -> None:
     problems = Problems()
 
     try:
-        for path in iter_logfiles(args.path, analyzer):
+        for path, ignored in iter_logfiles(args.path, analyzer):
             try:
-                process_file(path, args, analyzer, logger, problems)
+                process_file(path, ignored, args, analyzer, logger, problems)
             except FILE_ERRORS as e:
                 problems.add_failed(path, e)
             if args.fail_fast and problems.messages:

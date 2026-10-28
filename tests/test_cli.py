@@ -161,9 +161,9 @@ def test_logreach_reports_problems_of_single_file(monkeypatch, tmp_path, capsys)
 
 
 @pytest.mark.parametrize('extra_args', [(), ('--type', 'syslog')])
-def test_logreach_skips_empty_file_silently(monkeypatch, tmp_path, capsys, extra_args):
+def test_logreach_skips_empty_file(monkeypatch, tmp_path, capsys, extra_args):
     logs = make_logs(tmp_path, {'empty.log': ''})
-    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs / 'empty.log', '--check', *extra_args)
+    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs / 'empty.log', *extra_args)
     assert printed == []
     assert exit_code == 0
     assert capsys.readouterr().out == ''
@@ -323,3 +323,27 @@ def test_logreach_check_shows_timezone_of_each_file(monkeypatch, tmp_path, capsy
         f'{logs / "local.log"}: syslog (Europe/Vienna)',
         f'{logs / "syslog"}: syslog (America/New_York)',
     ]
+
+
+# --- skipped files
+
+def test_logreach_check_shows_why_files_are_skipped(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'empty.log': '', 'syslog.1.gz': SYSLOG, 'README': 'x\n'})
+    (tmp_path / 'ignore_list.txt').write_text('README\\Z\n')
+    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs, '--check')
+    assert printed == []
+    assert exit_code == 0  # skipped files are no problems
+    assert sorted(capsys.readouterr().out.splitlines()) == sorted([
+        f'{logs / "README"}: skipped (ignored: {tmp_path / "ignore_list.txt"} pattern README\\Z)',
+        f'{logs / "empty.log"}: skipped (empty)',
+        f'{logs / "syslog"}: syslog (UTC)',
+        f'{logs / "syslog.1.gz"}: skipped (ignored: extension .gz)',
+    ])
+
+
+def test_logreach_skips_ignored_and_empty_files_without_output(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'empty.log': '', 'syslog.1.gz': SYSLOG})
+    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs)
+    assert {line.filename for line in printed} == {str(logs / 'syslog')}
+    assert exit_code == 0
+    assert capsys.readouterr().out == ''

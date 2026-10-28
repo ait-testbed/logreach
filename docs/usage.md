@@ -67,6 +67,21 @@ gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
 The timezone only matters for timestamps without one; `eve.json` stamps like
 `2026-09-01T13:25:36+0000` keep their own.
 
+## Checking a directory: `--check`
+
+`--check` reads every file and reports the same problems, but prints one line per file instead of
+the log lines: the detected type and timezone, or why the file was skipped.
+
+```text
+gather/logs/inetfw/kern.log: syslog (UTC)
+gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
+gather/logs/inetfw/wtmp: skipped (ignored: ignore_list.txt pattern /wtmp\Z)
+gather/logs/inetfw/syslog.1.gz: skipped (ignored: extension .gz)
+gather/logs/docker/empty.log: skipped (empty)
+```
+
+Skipped files are no problems. Without `--check` they are skipped without output.
+
 ## Problems and exit codes
 
 Logreach does not stop at a problem. It lists them on stderr at the end of the run:
