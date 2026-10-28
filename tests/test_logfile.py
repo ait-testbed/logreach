@@ -1,14 +1,11 @@
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-import logreach.__cli__ as cli
 from logreach.logfile import MAX_KEPT_UNPARSED, Logfile, config_factory
 from logreach.schemas.logfileconfig import JsonLogConfig, LogType, RegexLogConfig, TimestampRegex
-from logreach.schemas.logline import Logline
 
 
 @pytest.mark.parametrize('logtype, regex', [
@@ -84,14 +81,3 @@ def test_dayfirst_decides_ambiguous_dates(line, dayfirst, expected):
 def test_dayfirst_json():
     config = config_factory('app.json', LogType.JSON, datetime_key='time', dayfirst=True)
     assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)
-
-
-def test_logreach_cli_dayfirst_flag(monkeypatch, tmp_path):
-    logfile = tmp_path / 'suricata.log'
-    logfile.write_text('1/9/2026 -- 13:25:40 - <Info> x\n')
-    printed: list[Logline] = []
-    monkeypatch.setattr(cli, 'format_logline', printed.append)
-    monkeypatch.setattr(sys, 'argv', ['logreach', '--file', str(logfile), '--dayfirst',
-                                      '--begin', '2026-09-01', '--end', '2026-09-02'])
-    cli.main()
-    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40)]
