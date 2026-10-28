@@ -1,14 +1,26 @@
 site_name: Logreach
 site_url: https://ait-testbed.github.io/logreach/
+repo_url: https://github.com/ait-testbed/logreach
 
 theme:
   name: readthedocs
 
+extra:
+  version:
+    provider: mike
+
 nav:
   - Home: index.md
-
-
-
+  - User Guide:
+    - Installation: installation.md
+    - Configuration: configuration.md
+    - Usage: usage.md
+  - Contributing:
+    - Git Workflow: contribution.md
+    - Development: development.md
+    - Requirements: requirements.md
+  - Maintainers:
+    - Release Process: release.md
 
 markdown_extensions:
   - admonition

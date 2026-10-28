@@ -27,3 +27,7 @@
    ```
 
 6. Open a PR against `development` and fill in the PR template.
+
+## Releases
+
+See the [release process](https://ait-testbed.github.io/logreach/latest/release/).
