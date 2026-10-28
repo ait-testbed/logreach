@@ -43,6 +43,9 @@ logreach web_php.log --type syslog --datetimeregex '\A(.+?UTC)'
 
 # read dates like 1/9/2026 as 1 September
 logreach suricata.log --dayfirst
+
+# timestamps without timezone (in the logs and in --begin/--end) are Vienna time, not UTC
+logreach gather/logs --begin '2026-09-01 14:00' --timezone Europe/Vienna
 ```
 
 Files where no type fits and lines without a timestamp are listed on stderr at the end of the

@@ -31,6 +31,7 @@ it from `PATH`.
 {"logfile_path": "gather/logs/zm/web_php.log", "type": "syslog", "datetimeregex": "\\A(.+?UTC)"}
 {"logfile_path": "gather/logs/nclog/audit.log", "type": "json", "datetimekey": "time"}
 {"logfile_path": "gather/logs/suricata/suricata.log", "type": "syslog", "dayfirst": true}
+{"logfile_path": "gather/logs/winhost/app.log", "type": "syslog", "timezone": "Europe/Vienna"}
 ```
 
 | Key | Required | Meaning |
@@ -40,5 +41,6 @@ it from `PATH`.
 | `datetimeregex` | no | regex whose first group is the timestamp (not for `json`) |
 | `datetimekey` | for `json` | key that holds the timestamp |
 | `dayfirst` | no | `true` reads dates like `1/9/2026` as 1 September |
+| `timezone` | no | timezone of timestamps without one in this file, e.g. `Europe/Vienna`; overrides `--timezone` |
 
 `--type` on the command line takes precedence over this file.

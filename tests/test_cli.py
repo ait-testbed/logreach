@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -138,8 +138,8 @@ def test_logreach_check_shows_types_instead_of_lines(monkeypatch, tmp_path, caps
     assert printed == []
     assert exit_code == 0
     assert sorted(capsys.readouterr().out.splitlines()) == [
-        f'{logs / "eve.json"}: json (timestamp)',
-        f'{logs / "syslog"}: syslog',
+        f'{logs / "eve.json"}: json (timestamp, UTC)',
+        f'{logs / "syslog"}: syslog (UTC)',
     ]
 
 
@@ -192,7 +192,7 @@ def test_logreach_type_overrides_types_file(monkeypatch, tmp_path, capsys):
     entry = {'logfile_path': str(logs / 'syslog'), 'type': 'audit'}
     (tmp_path / 'logtypes.json').write_text(json.dumps(entry) + '\n')
     run_logreach(monkeypatch, tmp_path, logs, '--type', 'syslog', '--check')
-    assert capsys.readouterr().out == f'{logs / "syslog"}: syslog\n'
+    assert capsys.readouterr().out == f'{logs / "syslog"}: syslog (UTC)\n'
 
 
 @pytest.mark.parametrize('option', ['--datetimekey', '--datetimeregex'])
@@ -205,7 +205,7 @@ def test_logreach_type_options_require_type(monkeypatch, tmp_path, capsys, optio
 def test_logreach_dayfirst_applies_to_detected_type(monkeypatch, tmp_path):
     logs = make_logs(tmp_path, {'suricata.log': '1/9/2026 -- 13:25:40 - <Info> x\n'})
     printed, _ = run_logreach(monkeypatch, tmp_path, logs, '--dayfirst')
-    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40)]
+    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40, tzinfo=UTC)]
 
 
 # --- errors while reading a file
@@ -240,7 +240,7 @@ def test_logreach_dayfirst_flag(monkeypatch, tmp_path):
     monkeypatch.setattr(sys, 'argv', ['logreach', str(logfile), '--dayfirst',
                                       '--begin', '2026-09-01', '--end', '2026-09-02'])
     cli.main()
-    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40)]
+    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40, tzinfo=UTC)]
 
 
 def test_logreach_json_without_datetimekey_is_a_usage_error(monkeypatch, tmp_path, capsys):
@@ -249,3 +249,77 @@ def test_logreach_json_without_datetimekey_is_a_usage_error(monkeypatch, tmp_pat
         cli.main()
     assert exit_info.value.code == 2
     assert '--type json requires --datetimekey' in capsys.readouterr().err
+
+
+# --- timezones
+
+SYSLOG_1408 = 'Sep  1 14:08:07 host app: x\n'
+
+
+def test_logreach_compares_epochs_with_begin_without_timezone(monkeypatch, tmp_path):
+    # audit epochs carry UTC, --begin has no timezone: used to raise TypeError
+    logs = make_logs(tmp_path, {'audit.log': AUDIT})
+    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs / 'audit.log', '--begin', '2026-09-01')
+    assert len(printed) == 1
+    assert exit_code == 0
+
+
+def test_logreach_compares_naive_lines_with_begin_with_timezone(monkeypatch, tmp_path):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG_1408})
+    printed, _ = run_logreach(monkeypatch, tmp_path, logs, '--begin', '2026-09-01T14:00+00:00')
+    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 14, 8, 7, tzinfo=UTC)]
+
+
+@pytest.mark.parametrize('extra_args, printed_lines', [
+    pytest.param((), 1, id='utc'),
+    # 14:08:07 in Vienna (UTC+2 in September) is 12:08:07 UTC, before --begin
+    pytest.param(('--timezone', 'Europe/Vienna'), 0, id='vienna'),
+])
+def test_logreach_timezone_option_applies_to_lines_without_timezone(monkeypatch, tmp_path, extra_args,
+                                                                    printed_lines):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG_1408})
+    printed, _ = run_logreach(monkeypatch, tmp_path, logs, '--begin', '2026-09-01T13:00+00:00', *extra_args)
+    assert len(printed) == printed_lines
+
+
+def test_logreach_timezone_option_applies_to_begin_without_timezone(monkeypatch, tmp_path):
+    # the line is in UTC (audit epoch); --begin 14:00 Vienna is 12:00 UTC
+    logs = make_logs(tmp_path, {'audit.log': 'type=X msg=audit(1788267600.0:1): x\n'})  # 13:00 UTC
+    printed, _ = run_logreach(monkeypatch, tmp_path, logs, '--begin', '2026-09-01 14:00',
+                              '--timezone', 'Europe/Vienna')
+    assert len(printed) == 1
+
+
+def test_logreach_types_file_timezone_overrides_timezone_option(monkeypatch, tmp_path):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG_1408})
+    entry = {'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'Europe/Vienna'}
+    (tmp_path / 'logtypes.json').write_text(json.dumps(entry) + '\n')
+    printed, _ = run_logreach(monkeypatch, tmp_path, logs, '--timezone', 'UTC')
+    assert printed[0].timestamp.utcoffset().total_seconds() == 2 * 3600
+
+
+def test_logreach_unknown_timezone_is_a_usage_error(monkeypatch, tmp_path, capsys):
+    _, exit_code = run_logreach(monkeypatch, tmp_path, tmp_path, '--timezone', 'Mars/Olympus')
+    assert exit_code == 2
+    assert 'unknown timezone: Mars/Olympus' in capsys.readouterr().err
+
+
+def test_logreach_unknown_timezone_in_types_file_is_reported(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG_1408})
+    entry = {'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'Mars/Olympus'}
+    (tmp_path / 'logtypes.json').write_text(json.dumps(entry) + '\n')
+    printed, exit_code = run_logreach(monkeypatch, tmp_path, logs)
+    assert printed == []
+    assert exit_code == 1
+    assert 'Unknown timezone in' in capsys.readouterr().err
+
+
+def test_logreach_check_shows_timezone_of_each_file(monkeypatch, tmp_path, capsys):
+    logs = make_logs(tmp_path, {'syslog': SYSLOG_1408, 'local.log': SYSLOG_1408})
+    entry = {'logfile_path': str(logs / 'local.log'), 'type': 'syslog', 'timezone': 'Europe/Vienna'}
+    (tmp_path / 'logtypes.json').write_text(json.dumps(entry) + '\n')
+    run_logreach(monkeypatch, tmp_path, logs, '--check', '--timezone', 'America/New_York')
+    assert sorted(capsys.readouterr().out.splitlines()) == [
+        f'{logs / "local.log"}: syslog (Europe/Vienna)',
+        f'{logs / "syslog"}: syslog (America/New_York)',
+    ]

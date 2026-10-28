@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import NoReturn
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.parser import parse
 from rich import print
@@ -43,6 +44,13 @@ def setup_logger() -> logging.Logger:
 
 def parsed_datetime(datetime_str: str) -> datetime:
     return parse(datetime_str, fuzzy=True)
+
+
+def parsed_timezone(name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise argparse.ArgumentTypeError(f'unknown timezone: {name}')
 
 
 def format_logline(logline: Logline) -> None:
@@ -108,6 +116,9 @@ def parse_args() -> argparse.Namespace:
                         help='read ambiguous dates like 1/9/2026 as day/month (1 September)')
     parser.add_argument('--begin', help='filter from this timestamp on', type=parsed_datetime)
     parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
+    parser.add_argument('--timezone', default='UTC', type=parsed_timezone,
+                        help='timezone of timestamps without one, in the logs and in --begin / --end, '
+                             'e.g. Europe/Vienna; a "timezone" in the types file overrides it per file')
     parser.add_argument('--ignored-extension', default='.gz,.xz,.conf,.journal,.journal~',
                         help="comma separated list of file extensions ignored in directories, '' for none")
     parser.add_argument('--ignorelist-file', default=DEFAULT_IGNORES_FILE,
@@ -129,6 +140,11 @@ def parse_args() -> argparse.Namespace:
         parser.error('--datetimekey and --datetimeregex require --type')
     if not os.path.exists(args.path):
         parser.error(f'{args.path} does not exist')
+    # --begin / --end without timezone are meant in --timezone, for every file
+    if args.begin and args.begin.tzinfo is None:
+        args.begin = args.begin.replace(tzinfo=args.timezone)
+    if args.end and args.end.tzinfo is None:
+        args.end = args.end.replace(tzinfo=args.timezone)
     return args
 
 
@@ -159,6 +175,8 @@ def make_config(path: str, args: argparse.Namespace, analyzer: Analyzer) -> LogC
     config.begin = args.begin
     config.end = args.end
     config.dayfirst = config.dayfirst or args.dayfirst
+    if config.timezone is None:  # not set per file in the types file
+        config.timezone = args.timezone
     return config
 
 

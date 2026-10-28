@@ -42,6 +42,31 @@ For each file, the first source that applies wins:
 
 Timestamps without a year (e.g. `Sep  1 13:25:26`) take the year of `--begin`, else `--end`.
 
+## Timezones
+
+Timestamps without a timezone (classic syslog like `Sep  1 13:25:26`, and `--begin`/`--end` like
+`2026-09-01 14:00`) are taken as UTC. Timestamps that have one, like audit epochs or
+`2026-09-01T14:09:21+02:00`, keep it, so files in different timezones are compared correctly.
+
+```bash
+# logs and --begin / --end without timezone are Vienna time
+logreach gather/logs --begin '2026-09-01 14:00' --timezone Europe/Vienna
+```
+
+A single file or host that logs in another timezone gets a `"timezone"` in
+[`logtypes.json`](configuration.md), which overrides `--timezone` for that file.
+
+`--check` shows the timezone each file is read in, so a wrong assumption shows up early:
+
+```text
+gather/logs/inetfw/kern.log: syslog (UTC)
+gather/logs/winhost/app.log: syslog (Europe/Vienna)
+gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
+```
+
+The timezone only matters for timestamps without one; `eve.json` stamps like
+`2026-09-01T13:25:36+0000` keep their own.
+
 ## Problems and exit codes
 
 Logreach does not stop at a problem. It lists them on stderr at the end of the run:

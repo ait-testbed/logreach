@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, tzinfo
 from pathlib import Path
 from types import TracebackType
 from typing import Self, TextIO
@@ -23,7 +23,7 @@ DEFAULT_TIMESTAMP_REGEX = {
 def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
                    datetime_key: str | None = None, datetime_regex: str | None = None,
                    begin: datetime | None = None, end: datetime | None = None,
-                   dayfirst: bool = False) -> LogConfig:
+                   dayfirst: bool = False, timezone: tzinfo | None = None) -> LogConfig:
     """Build the config that tells Logfile how to read timestamps from a
     logfile.
 
@@ -32,18 +32,19 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
     dayfirst reads ambiguous dates like 1/9/2026 as day/month.
+    timezone is attached to timestamps without one (None: UTC).
     """
     if logtype == LogType.JSON:
         if not datetime_key:
             raise TypeError('json-type needs a datetime_key to identify the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
-                             dayfirst=dayfirst)
+                             dayfirst=dayfirst, timezone=timezone)
 
     regex = datetime_regex or DEFAULT_TIMESTAMP_REGEX[logtype].value
     return RegexLogConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
                           begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
-                          dayfirst=dayfirst)
+                          dayfirst=dayfirst, timezone=timezone)
 
 
 class Logfile:
@@ -114,6 +115,8 @@ class Logfile:
             self.unparsed_count += 1
             if len(self.unparsed) < MAX_KEPT_UNPARSED:
                 self.unparsed.append((self.lineno, line))
+        else:
+            timestamp = self.config.with_timezone(timestamp)
         # __next__ skips lines without timestamp or outside the time window
         if timestamp is None or not self.config.in_range(timestamp):
             raise NotInRange(f'line number {self.lineno} is not in timerange')

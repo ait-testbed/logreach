@@ -3,8 +3,10 @@ import logging
 import os
 import re
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, IgnoredFile, LogFileEmpty, LogTypeError
+from logreach.exceptions import (DateTimeKeyNotFound, DateTimeNotFound, IgnoredFile, LogFileEmpty,
+                                 LogreachError, LogTypeError)
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 
@@ -78,10 +80,16 @@ class KnownLogfilePaths:
     def config_for(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
         """Build the config stored for path in the types file."""
         entry = self.data[path]
+        timezone = None
+        if 'timezone' in entry:
+            try:
+                timezone = ZoneInfo(entry['timezone'])
+            except (ZoneInfoNotFoundError, ValueError):
+                raise LogreachError(f'Unknown timezone in {self.types_file}: {entry["timezone"]}')
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
                               datetime_regex=entry.get('datetimeregex'),
-                              dayfirst=entry.get('dayfirst', False))
+                              dayfirst=entry.get('dayfirst', False), timezone=timezone)
 
 
 class Analyzer:

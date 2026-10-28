@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from enum import Enum
 from pathlib import Path
 from typing import Pattern
@@ -32,10 +32,21 @@ class LogConfig:
     allow_empty_timestamp: bool = field(default=True, kw_only=True)
     # read ambiguous dates like 1/9/2026 as 1 September; also flips ISO dates, so set it only per file
     dayfirst: bool = field(default=False, kw_only=True)
+    # timezone of timestamps that have none, e.g. classic syslog; None means UTC
+    timezone: tzinfo | None = field(default=None, kw_only=True)
+
+    def with_timezone(self, timestamp: datetime) -> datetime:
+        """Attach the config's timezone (UTC if unset) to a timestamp without
+        one; timestamps with a timezone are kept as they are."""
+        if timestamp.tzinfo is None:
+            return timestamp.replace(tzinfo=self.timezone or timezone.utc)
+        return timestamp
 
     def in_range(self, timestamp: datetime) -> bool:
-        after_begin = self.begin is None or timestamp >= self.begin
-        before_end = self.end is None or timestamp <= self.end
+        # both sides with a timezone: comparing one with and one without raises TypeError
+        timestamp = self.with_timezone(timestamp)
+        after_begin = self.begin is None or timestamp >= self.with_timezone(self.begin)
+        before_end = self.end is None or timestamp <= self.with_timezone(self.end)
         return after_begin and before_end
 
     @property
@@ -51,9 +62,15 @@ class LogConfig:
     def parse_timestamp(self, logline: str) -> datetime | None:
         pass
 
+    @property
+    def timezone_name(self) -> str:
+        """Name of the timezone attached to timestamps without one, e.g. 'UTC'
+        or 'Europe/Vienna'."""
+        return str(self.timezone or timezone.utc)
+
     def describe(self) -> str:
-        """Name how this config reads timestamps, e.g. 'syslog'."""
-        return type(self).__name__
+        """Name how this config reads timestamps, e.g. 'syslog (UTC)'."""
+        return f'{type(self).__name__} ({self.timezone_name})'
 
 
 @dataclass
@@ -63,9 +80,10 @@ class RegexLogConfig(LogConfig):
 
     def describe(self) -> str:
         try:
-            return TimestampRegex(self.regex_pattern.pattern).name.lower()
+            name = TimestampRegex(self.regex_pattern.pattern).name.lower()
         except ValueError:  # not one of the built-in regexes
-            return f'custom regex {self.regex_pattern.pattern}'
+            name = f'custom regex {self.regex_pattern.pattern}'
+        return f'{name} ({self.timezone_name})'
 
     def parse_timestamp(self, logline: str) -> datetime | None:
         match = self.regex_pattern.match(logline)
@@ -89,7 +107,7 @@ class JsonLogConfig(LogConfig):
     datetime_key: str
 
     def describe(self) -> str:
-        return f'json ({self.datetime_key})'
+        return f'json ({self.datetime_key}, {self.timezone_name})'
 
     def parse_timestamp(self, logline: str) -> datetime | None:
         record = json.loads(logline)
