@@ -57,6 +57,13 @@ def format_logline(logline: Logline) -> None:
     print(logline)
 
 
+# def print_logline_with_timestamp(logline: Logline) -> None:
+#     """Not used yet: can replace format_logline to make output sortable for
+#     example."""
+#     print(f'{logline.timestamp.isoformat()} {logline.filename}:{logline.lineno}:'
+#           f'{logline.raw.rstrip("\r\n")}\n')
+
+
 @dataclass
 class Problems:
     """Problems collected during the run, reported at the end so a run never
