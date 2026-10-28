@@ -53,6 +53,7 @@ def format_logline(logline: Logline) -> None:
 class Problems:
     """Problems collected during the run, reported at the end so a run never
     stops halfway."""
+
     messages: list[str] = field(default_factory=list)
     unparsed_lines: int = 0
     undetermined_files: int = 0
