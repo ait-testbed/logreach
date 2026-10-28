@@ -3,7 +3,7 @@ import json
 import pytest
 
 from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
-from logreach.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
+from logreach.exceptions import LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
 
 SYSLOG = ('Sep  1 14:08:07 videoserver systemd[1]: Started Session 16 of user superuser.\n'
@@ -47,7 +47,7 @@ def test_detects_json_and_its_timestamp_key(tmp_path, content, key):
 
 
 def test_detect_config_empty_file(tmp_path):
-    with pytest.raises(LogFileEmpty):
+    with pytest.raises(LogTypeError, match='is empty'):
         detect(tmp_path, '')
 
 
@@ -123,10 +123,10 @@ def test_known_logfile_paths_contains_listed_paths(tmp_path):
     assert '/var/log/syslog' not in known
 
 
-def test_check_not_skipped_raises_for_ignored_paths(tmp_path):
+def test_analyzer_ignores_paths_from_ignores_file_and_extensions(tmp_path):
     ignores_file = tmp_path / 'ignore_list.txt'
-    ignores_file.write_text('\\.gz\\Z\n')
-    analyzer = Analyzer(types_file='', ignores_file=str(ignores_file))
-    with pytest.raises(IgnoredFile):
-        analyzer.check_not_skipped('/var/log/syslog.1.gz')
-    analyzer.check_not_skipped('/var/log/syslog')
+    ignores_file.write_text('README\\Z\n')
+    analyzer = Analyzer(types_file='', ignores_file=str(ignores_file), ignored_extensions=['.gz'])
+    assert analyzer.ignores.is_ignored('/var/log/README')
+    assert analyzer.ignores.is_ignored('/var/log/syslog.1.gz')
+    assert not analyzer.ignores.is_ignored('/var/log/syslog')

@@ -5,8 +5,7 @@ import re
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logreach.exceptions import (DateTimeKeyNotFound, DateTimeNotFound, IgnoredFile, LogFileEmpty,
-                                 LogreachError, LogTypeError)
+from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, LogreachError, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 
@@ -102,27 +101,14 @@ class Analyzer:
         self._ignores = IgnoreList(ignores_file, ignored_extensions)
 
     @property
-    def types(self) -> KnownLogfilePaths | None:
-        return self._types
-
-    @property
     def ignores(self) -> IgnoreList:
         return self._ignores
-
-    def check_not_skipped(self, path: str) -> None:
-        """Raise IgnoredFile if the path matches the ignore list or has an
-        ignored extension."""
-        if self._ignores.is_ignored(path):
-            raise IgnoredFile
 
     def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
         """Can this file be read as logtype?
 
-        If yes return config if no raise LogTypeError. If the file is
-        empty, raise LogFileEmpty.
+        If yes return config if no raise LogTypeError.
         """
-        if os.path.getsize(path) == 0:
-            raise LogFileEmpty(f'{path} is empty')
         try:
             datetime_key = json_timestamp_key(path) if logtype == LogType.JSON else None
             if logtype == LogType.JSON and datetime_key is None:
@@ -145,17 +131,16 @@ class Analyzer:
         """Return the config from the types file, or of the first log type in
         DETECTION_ORDER that can read the file.
 
-        If none work, raise LogTypeError.
+        If none work or the file is empty, raise LogTypeError.
         """
         if self._types and path in self._types:
             return self._types.config_for(path, allow_empty_timestamp)
+        if os.path.getsize(path) == 0:
+            raise LogTypeError(f'{path} is empty')
 
         for logtype in DETECTION_ORDER:
             try:
                 return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-            # must come before LogTypeError, which LogFileEmpty subclasses
-            except LogFileEmpty:
-                raise
             except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
                 continue  # try matching the next LogType
         raise LogTypeError(f'Unable to determine logtype for: {path}')
