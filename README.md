@@ -4,7 +4,7 @@ Reach into collected log dumps: `logreach` detects the type of each logfile (sys
 access or JSON) and prints the lines within a time window.
 
 > [!IMPORTANT]
-> Logreach is an early proof of concept and under heavy development.
+> Logreach is an early proof of concept and under development.
 
 ## Installation
 
@@ -13,7 +13,7 @@ Requires Python >= 3.14.
 ```bash
 git clone https://github.com/ait-testbed/logreach.git
 cd logreach
-uv sync            # or: pip install .
+uv sync
 ```
 
 With `uv`, prefix the commands below with `uv run`.
@@ -32,6 +32,9 @@ logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
+
+# stop at the first problem instead of listing all problems at the end
+logreach gather/logs --check --fail-fast
 
 # set the type instead of detecting it
 logreach audit.log --type audit
