@@ -23,17 +23,14 @@ def test_reads_single_file_even_if_ignored(make_logs, run_logreach):
     assert exit_code == 0
 
 
-def test_skips_ignored_files(make_logs, ignore_list, run_logreach):
-    logs = make_logs({'syslog': SYSLOG, 'syslog.old': SYSLOG})  # .old is no default extension
-    ignore_list('\\.old\\Z')
-    printed, _ = run_logreach(logs)
+def test_skips_ignored_and_empty_files_without_output(make_logs, ignore_list, run_logreach, capsys):
+    logs = make_logs({'syslog': SYSLOG, 'syslog.old': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG,
+                      'empty.log': ''})
+    ignore_list('\\.old\\Z')  # .gz and .conf are default ignored extensions
+    printed, exit_code = run_logreach(logs)
     assert {line.filename for line in printed} == {str(logs / 'syslog')}
-
-
-def test_skips_default_ignored_extensions(make_logs, run_logreach):
-    logs = make_logs({'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logreach(logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
+    assert exit_code == 0
+    assert capsys.readouterr().out == ''
 
 
 @pytest.mark.parametrize('extensions, read', [
@@ -52,14 +49,6 @@ def test_skips_empty_file(make_logs, run_logreach, capsys, extra_args):
     logs = make_logs({'empty.log': ''})
     printed, exit_code = run_logreach(logs / 'empty.log', *extra_args)
     assert printed == []
-    assert exit_code == 0
-    assert capsys.readouterr().out == ''
-
-
-def test_skips_ignored_and_empty_files_without_output(make_logs, run_logreach, capsys):
-    logs = make_logs({'syslog': SYSLOG, 'empty.log': '', 'syslog.1.gz': SYSLOG})
-    printed, exit_code = run_logreach(logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
     assert exit_code == 0
     assert capsys.readouterr().out == ''
 
@@ -83,16 +72,13 @@ def test_type_overrides_types_file(make_logs, types_file, run_logreach, capsys):
     assert capsys.readouterr().out == f'{logs / "syslog"}: syslog (UTC)\n'
 
 
-def test_dayfirst_flag(make_logs, run_logreach):
+@pytest.mark.parametrize('extra_args', [
+    pytest.param((), id='detected-type'),
+    pytest.param(('--type', 'syslog'), id='given-type'),
+])
+def test_dayfirst_flag(make_logs, run_logreach, extra_args):
     logs = make_logs({'suricata.log': '1/9/2026 -- 13:25:40 - <Info> x\n'})
-    printed, _ = run_logreach(logs / 'suricata.log', '--dayfirst', '--begin', '2026-09-01',
-                              '--end', '2026-09-02')
-    assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40, tzinfo=UTC)]
-
-
-def test_dayfirst_applies_to_detected_type(make_logs, run_logreach):
-    logs = make_logs({'suricata.log': '1/9/2026 -- 13:25:40 - <Info> x\n'})
-    printed, _ = run_logreach(logs, '--dayfirst')
+    printed, _ = run_logreach(logs, '--dayfirst', '--begin', '2026-09-01', '--end', '2026-09-02', *extra_args)
     assert [line.timestamp for line in printed] == [datetime(2026, 9, 1, 13, 25, 40, tzinfo=UTC)]
 
 
@@ -155,20 +141,13 @@ def test_reports_undetectable_file_at_the_end(make_logs, run_logreach, capsys):
     assert f'Unable to determine logtype for: {logs / "binary"}' in capsys.readouterr().err
 
 
-def test_reports_lines_without_timestamp_at_the_end(make_logs, run_logreach, capsys):
+@pytest.mark.parametrize('path', [pytest.param('', id='directory'), pytest.param('syslog', id='single-file')])
+def test_reports_lines_without_timestamp_at_the_end(make_logs, run_logreach, capsys, path):
     logs = make_logs({'syslog': SYSLOG + '[info] no timestamp here\n'})
-    printed, exit_code = run_logreach(logs)
+    printed, exit_code = run_logreach(logs / path)
     assert len(printed) == 2
     assert exit_code == 1
     assert f'{logs / "syslog"}:3: no timestamp: [info] no timestamp here' in capsys.readouterr().err
-
-
-def test_reports_problems_of_single_file(make_logs, run_logreach, capsys):
-    logs = make_logs({'syslog': SYSLOG + 'no timestamp\n'})
-    printed, exit_code = run_logreach(logs / 'syslog')
-    assert len(printed) == 2
-    assert exit_code == 1
-    assert f'{logs / "syslog"}:3: no timestamp: no timestamp' in capsys.readouterr().err
 
 
 def test_error_in_one_file_does_not_stop_the_run(make_logs, run_logreach, capsys):

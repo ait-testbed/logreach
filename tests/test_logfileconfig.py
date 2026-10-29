@@ -39,19 +39,17 @@ def test_audit_logs():
 
 # --- missing year
 
-def test_syslog_without_year_takes_year_from_begin():
-    config = config_factory('syslog', LogType.SYSLOG, begin=datetime(2020, 9, 1))
-    assert config.parse_timestamp('Sep  1 13:25:26 host app: x\n') == datetime(2020, 9, 1, 13, 25, 26)
-
-
-def test_syslog_without_year_takes_year_from_end_if_no_begin():
-    config = config_factory('syslog', LogType.SYSLOG, end=datetime(2020, 9, 1))
-    assert config.parse_timestamp('Sep  1 13:25:26 host app: x\n').year == 2020
-
-
-def test_explicit_year_is_kept():
-    config = config_factory('dpkg.log', LogType.SYSLOG, begin=datetime(2020, 1, 1))
-    assert config.parse_timestamp('2026-09-01 13:25:35 status x\n').year == 2026
+@pytest.mark.parametrize('window, line, expected', [
+    pytest.param({'begin': datetime(2020, 9, 1)}, 'Sep  1 13:25:26 host app: x\n',
+                 datetime(2020, 9, 1, 13, 25, 26), id='from-begin'),
+    pytest.param({'end': datetime(2020, 9, 1)}, 'Sep  1 13:25:26 host app: x\n',
+                 datetime(2020, 9, 1, 13, 25, 26), id='from-end'),
+    pytest.param({'begin': datetime(2020, 1, 1)}, '2026-09-01 13:25:35 status x\n',
+                 datetime(2026, 9, 1, 13, 25, 35), id='year-in-line-kept'),
+])
+def test_missing_year_comes_from_begin_or_end(window, line, expected):
+    config = config_factory('syslog', LogType.SYSLOG, **window)
+    assert config.parse_timestamp(line) == expected
 
 
 # --- dayfirst
