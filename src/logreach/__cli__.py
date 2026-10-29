@@ -174,16 +174,11 @@ def make_config(path: str, args: argparse.Namespace, analyzer: Analyzer) -> LogC
     """
     allow_empty_timestamp = not args.require_timestamp
     if args.type:
-        config = config_factory(path, LogType(args.type), allow_empty_timestamp=allow_empty_timestamp,
-                                datetime_key=args.datetimekey, datetime_regex=args.datetimeregex)
-    else:
-        config = analyzer.detect_config(path, allow_empty_timestamp=allow_empty_timestamp)
-    config.begin = args.begin
-    config.end = args.end
-    config.dayfirst = config.dayfirst or args.dayfirst
-    if config.timezone is None:  # not set per file in the types file
-        config.timezone = args.timezone
-    return config
+        return config_factory(path, LogType(args.type), allow_empty_timestamp=allow_empty_timestamp,
+                              datetime_key=args.datetimekey, datetime_regex=args.datetimeregex,
+                              begin=args.begin, end=args.end, dayfirst=args.dayfirst, timezone=args.timezone)
+    return analyzer.detect_config(path, allow_empty_timestamp=allow_empty_timestamp, begin=args.begin,
+                                  end=args.end, dayfirst=args.dayfirst, timezone=args.timezone)
 
 
 def process_file(path: str, ignored: str | None, args: argparse.Namespace, analyzer: Analyzer,

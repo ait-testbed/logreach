@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
+
 import pytest
 
 from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
@@ -68,6 +71,32 @@ def test_detect_config_reads_dayfirst_from_types_file(tmp_path, types_file, entr
     config = Analyzer(types_file=str(entries), ignores_file='').detect_config(str(logfile))
     assert config.dayfirst is dayfirst
     assert config.parse_timestamp(logfile.read_text()).month == (9 if dayfirst else 1)
+
+
+def test_detect_config_finds_type_without_lines_in_time_window(tmp_path):
+    # detection must not use the window: no line of this file is inside it
+    logfile = tmp_path / 'syslog'
+    logfile.write_text(SYSLOG)
+    begin = datetime(2026, 9, 2, tzinfo=UTC)
+    config = Analyzer(types_file='', ignores_file='').detect_config(
+        str(logfile), begin=begin, dayfirst=True, timezone=ZoneInfo('Europe/Vienna'))
+    assert config.describe() == 'syslog (Europe/Vienna)'
+    assert (config.begin, config.end, config.dayfirst) == (begin, None, True)
+
+
+@pytest.mark.parametrize('entry, timezone', [
+    pytest.param({'timezone': 'Europe/Vienna'}, 'Europe/Vienna', id='from-types-file'),
+    pytest.param({}, 'America/New_York', id='from-argument'),
+])
+def test_detect_config_types_file_settings_take_precedence(tmp_path, types_file, entry, timezone):
+    logfile = tmp_path / 'syslog'
+    logfile.write_text(SYSLOG)
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', **entry})
+    begin = datetime(2026, 9, 1, tzinfo=UTC)
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(
+        str(logfile), begin=begin, timezone=ZoneInfo('America/New_York'))
+    assert config.timezone == ZoneInfo(timezone)
+    assert config.begin == begin
 
 
 # --- ignore list and types file

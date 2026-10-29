@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, tzinfo
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -82,10 +83,14 @@ class KnownLogfilePaths:
     def __contains__(self, path: str) -> bool:
         return path in self.data
 
-    def config_for(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
-        """Build the config stored for path in the types file."""
+    def config_for(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
+                   end: datetime | None = None, dayfirst: bool = False,
+                   timezone: tzinfo | None = None) -> LogConfig:
+        """Build the config stored for path in the types file.
+
+        Its dayfirst and timezone take precedence over the arguments.
+        """
         entry = self.data[path]
-        timezone = None
         if 'timezone' in entry:
             try:
                 timezone = ZoneInfo(entry['timezone'])
@@ -94,7 +99,8 @@ class KnownLogfilePaths:
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
                               datetime_regex=entry.get('datetimeregex'),
-                              dayfirst=entry.get('dayfirst', False), timezone=timezone)
+                              begin=begin, end=end, dayfirst=entry.get('dayfirst', False) or dayfirst,
+                              timezone=timezone)
 
 
 class Analyzer:
@@ -110,10 +116,11 @@ class Analyzer:
     def ignores(self) -> IgnoreList:
         return self._ignores
 
-    def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
+    def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> str | None:
         """Can this file be read as logtype?
 
-        If yes return config if no raise LogTypeError.
+        If yes return the JSON timestamp key (None for other types), if
+        no raise LogTypeError.
         """
         try:
             datetime_key = json_timestamp_key(path) if logtype == LogType.JSON else None
@@ -131,22 +138,30 @@ class Analyzer:
 
         if first_line is None:
             raise LogTypeError(f'No line in {path} parses as {logtype.value}')
-        return config
+        return datetime_key
 
-    def detect_config(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+    def detect_config(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
+                      end: datetime | None = None, dayfirst: bool = False,
+                      timezone: tzinfo | None = None) -> LogConfig:
         """Return the config from the types file, or of the first log type in
-        DETECTION_ORDER that can read the file.
+        DETECTION_ORDER that can read the file, with the time window and
+        timestamp settings.
 
         If none work or the file is empty, raise LogTypeError.
         """
         if self._types and path in self._types:
-            return self._types.config_for(path, allow_empty_timestamp)
+            return self._types.config_for(path, allow_empty_timestamp, begin=begin, end=end,
+                                          dayfirst=dayfirst, timezone=timezone)
         if os.path.getsize(path) == 0:
             raise LogTypeError(f'{path} is empty')
 
         for logtype in DETECTION_ORDER:
             try:
-                return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
+                # without the time window: a file with no line inside it still has a type
+                datetime_key = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
             except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
                 continue  # try matching the next LogType
+            return config_factory(path, logtype, allow_empty_timestamp=allow_empty_timestamp,
+                                  datetime_key=datetime_key, begin=begin, end=end, dayfirst=dayfirst,
+                                  timezone=timezone)
         raise LogTypeError(f'Unable to determine logtype for: {path}')
