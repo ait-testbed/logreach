@@ -1,10 +1,9 @@
-import logging
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from logreach.logfile import MAX_KEPT_UNPARSED, Logfile, config_factory
+from logreach.logfile import MAX_KEPT_UNPARSED, config_factory
 from logreach.schemas.logfileconfig import JsonLogConfig, LogType, RegexLogConfig, TimestampRegex
 
 
@@ -39,14 +38,14 @@ def test_config_factory_json_requires_datetimekey():
         config_factory('eve.json', LogType.JSON)
 
 
-def test_logfile_keeps_only_first_unparsed_lines_but_counts_all(tmp_path):
+def test_logfile_keeps_only_first_unparsed_lines_but_counts_all(tmp_path, read_logfile):
     logfile = tmp_path / 'syslog'
     logfile.write_text('Sep  1 14:08:07 host app: ok\n' + 'no timestamp\n' * (MAX_KEPT_UNPARSED + 3))
     config = config_factory(str(logfile), LogType.SYSLOG)
-    with Logfile(config, logger=logging.getLogger()) as lf:
-        assert len(list(lf)) == 1
-    assert lf.unparsed_count == MAX_KEPT_UNPARSED + 3
-    assert lf.unparsed == [(lineno, 'no timestamp\n') for lineno in range(2, MAX_KEPT_UNPARSED + 2)]
+    lines, logfile = read_logfile(config)
+    assert len(lines) == 1
+    assert logfile.unparsed_count == MAX_KEPT_UNPARSED + 3
+    assert logfile.unparsed == [(lineno, 'no timestamp\n') for lineno in range(2, MAX_KEPT_UNPARSED + 2)]
 
 
 def test_syslog_without_year_takes_year_from_begin():
@@ -83,7 +82,7 @@ def test_dayfirst_json():
     assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)
 
 
-def test_logfile_skips_lines_outside_window_and_without_timestamp(tmp_path):
+def test_logfile_skips_lines_outside_window_and_without_timestamp(tmp_path, read_logfile):
     logfile = tmp_path / 'syslog'
     logfile.write_text('Sep  1 13:00:00 host app: before\n'
                        'Sep  1 14:00:00 host app: inside\n'
@@ -92,6 +91,6 @@ def test_logfile_skips_lines_outside_window_and_without_timestamp(tmp_path):
                        'Sep  1 14:30:00 host app: inside again\n')
     config = config_factory(str(logfile), LogType.SYSLOG, begin=datetime(2026, 9, 1, 13, 30),
                             end=datetime(2026, 9, 1, 14, 45))
-    with Logfile(config, logger=logging.getLogger()) as lf:
-        assert [line.lineno for line in lf] == [2, 5]
-    assert lf.unparsed == [(3, 'no timestamp\n')]
+    lines, logfile = read_logfile(config)
+    assert [line.lineno for line in lines] == [2, 5]
+    assert logfile.unparsed == [(3, 'no timestamp\n')]

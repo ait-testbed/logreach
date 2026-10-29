@@ -1,18 +1,9 @@
-import json
-
 import pytest
 
 from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
 from logreach.exceptions import LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
-
-SYSLOG = ('Sep  1 14:08:07 videoserver systemd[1]: Started Session 16 of user superuser.\n'
-          'Sep  1 14:09:00 videoserver systemd[1]: Started Session 17 of user superuser.\n')
-AUDIT = 'type=DAEMON_START msg=audit(1788266693.261:9117): op=start ver=3.0.9 res=success\n'
-ACCESS = '127.0.0.1 - - [01/Sep/2026:14:08:07 +0000] "GET / HTTP/1.1" 200 512\n'
-# spaces after the separators: the loose syslog regex used to claim this line
-JSON_TIME = '{"time": "2026-09-01T14:09:21+00:00", "msg": "session started"}\n'
-EVE_JSON = '{"timestamp": "2026-09-01T14:09:21.639533+0000", "event_type": "alert"}\n'
+from samples import ACCESS, AUDIT, EVE_JSON, JSON_TIME, SYSLOG
 
 
 def detect(tmp_path, content: str) -> LogConfig:
@@ -56,14 +47,12 @@ def test_detect_config_file_without_timestamps(tmp_path):
         detect(tmp_path, 'no timestamps here\njust text\n')
 
 
-def test_detect_config_uses_types_file(tmp_path):
+def test_detect_config_uses_types_file(tmp_path, types_file):
     # a format no built-in regex knows, so only the types file entry can read it
     logfile = tmp_path / 'web_php.log'
     logfile.write_text('9/1/26, 1:25:44 PM UTC.519574 web_php[1170].INF [Login successful]\n')
-    entry = {'logfile_path': str(logfile), 'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'}
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text(json.dumps(entry) + '\n')
-    config = Analyzer(types_file=str(types_file), ignores_file='').detect_config(str(logfile))
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'})
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(str(logfile))
     assert isinstance(config, RegexLogConfig)
     assert config.regex_pattern.pattern == r'\A(.+?UTC)'
 
@@ -72,22 +61,19 @@ def test_detect_config_uses_types_file(tmp_path):
     pytest.param({'dayfirst': True}, True, id='set'),
     pytest.param({}, False, id='default'),
 ])
-def test_detect_config_reads_dayfirst_from_types_file(tmp_path, entry, dayfirst):
+def test_detect_config_reads_dayfirst_from_types_file(tmp_path, types_file, entry, dayfirst):
     logfile = tmp_path / 'suricata.log'
     logfile.write_text('1/9/2026 -- 13:25:40 - <Info> x\n')
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text(json.dumps({'logfile_path': str(logfile), 'type': 'syslog', **entry}) + '\n')
-    config = Analyzer(types_file=str(types_file), ignores_file='').detect_config(str(logfile))
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', **entry})
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(str(logfile))
     assert config.dayfirst is dayfirst
     assert config.parse_timestamp(logfile.read_text()).month == (9 if dayfirst else 1)
 
 
 # --- ignore list and types file
 
-def test_ignore_list_skips_blank_lines_and_comments(tmp_path):
-    ignore_file = tmp_path / 'ignore_list.txt'
-    ignore_file.write_text('# compressed logs\n\\.gz\\Z  \n\n   \n')
-    ignores = IgnoreList(str(ignore_file))
+def test_ignore_list_skips_blank_lines_and_comments(ignore_list):
+    ignores = IgnoreList(str(ignore_list('# compressed logs', '\\.gz\\Z  ', '', '   ')))
     assert [pattern.pattern for pattern, _source in ignores.patterns] == ['\\.gz\\Z']
     assert ignores.ignore_reason('/var/log/syslog.1.gz') is not None
     assert ignores.ignore_reason('/var/log/syslog') is None
@@ -106,36 +92,29 @@ def test_ignore_list_ignores_extensions(path, ignored):
     assert (ignores.ignore_reason(path) is not None) is ignored
 
 
-def test_ignore_list_combines_file_and_extensions(tmp_path):
-    ignore_file = tmp_path / 'ignore_list.txt'
-    ignore_file.write_text('README\n')
-    ignores = IgnoreList(str(ignore_file), extensions=['.gz'])
+def test_ignore_list_combines_file_and_extensions(ignore_list):
+    ignores = IgnoreList(str(ignore_list('README')), extensions=['.gz'])
     assert ignores.ignore_reason('/var/log/README') is not None
     assert ignores.ignore_reason('/var/log/syslog.1.gz') is not None
     assert ignores.ignore_reason('/var/log/syslog') is None
 
 
-def test_known_logfile_paths_contains_listed_paths(tmp_path):
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text('{"logfile_path": "/var/log/suricata/eve.json", "type": "json"}\n')
-    known = KnownLogfilePaths(str(types_file))
+def test_known_logfile_paths_contains_listed_paths(types_file):
+    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json'})))
     assert '/var/log/suricata/eve.json' in known
     assert '/var/log/syslog' not in known
 
 
-def test_ignore_list_names_the_matching_pattern(tmp_path):
-    ignore_file = tmp_path / 'ignore_list.txt'
-    ignore_file.write_text('README\\Z\n')
+def test_ignore_list_names_the_matching_pattern(ignore_list):
+    ignore_file = ignore_list('README\\Z')
     ignores = IgnoreList(str(ignore_file), extensions=['gz'])
     assert ignores.ignore_reason('/var/log/README') == f'{ignore_file} pattern README\\Z'
     assert ignores.ignore_reason('/var/log/syslog.1.gz') == 'extension .gz'
     assert ignores.ignore_reason('/var/log/syslog') is None
 
 
-def test_analyzer_ignores_paths_from_ignores_file_and_extensions(tmp_path):
-    ignores_file = tmp_path / 'ignore_list.txt'
-    ignores_file.write_text('README\\Z\n')
-    analyzer = Analyzer(types_file='', ignores_file=str(ignores_file), ignored_extensions=['.gz'])
+def test_analyzer_ignores_paths_from_ignores_file_and_extensions(ignore_list):
+    analyzer = Analyzer(types_file='', ignores_file=str(ignore_list('README\\Z')), ignored_extensions=['.gz'])
     assert analyzer.ignores.ignore_reason('/var/log/README') is not None
     assert analyzer.ignores.ignore_reason('/var/log/syslog.1.gz') is not None
     assert analyzer.ignores.ignore_reason('/var/log/syslog') is None
