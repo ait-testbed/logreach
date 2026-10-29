@@ -76,7 +76,8 @@ class LogConfig:
 @dataclass
 class RegexLogConfig(LogConfig):
     regex_pattern: Pattern[str]
-    _unix_timestamp: bool = False
+    # switches to epoch parsing after the first epoch timestamp, e.g. audit logs: state, not a setting
+    _unix_timestamp: bool = field(default=False, init=False, repr=False, compare=False)
 
     def describe(self) -> str:
         try:
