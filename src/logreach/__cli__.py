@@ -53,12 +53,12 @@ def parsed_timezone(name: str) -> ZoneInfo:
         raise argparse.ArgumentTypeError(f'unknown timezone: {name}')
 
 
-def format_logline(logline: Logline) -> None:
+def print_logline(logline: Logline) -> None:
     print(logline)
 
 
 # def print_logline_with_timestamp(logline: Logline) -> None:
-#     """Not used yet: can replace format_logline to make output sortable for
+#     """Not used yet: can replace print_logline to make output sortable for
 #     example."""
 #     print(f'{logline.timestamp.isoformat()} {logline.filename}:{logline.lineno}:'
 #           f'{logline.raw.rstrip("\r\n")}\n')
@@ -74,15 +74,15 @@ class Problems:
     undetermined_files: int = 0
     failed_files: int = 0
 
-    def add_unparsed(self, path: str, lf: Logfile) -> None:
+    def add_unparsed(self, path: str, logfile: Logfile) -> None:
         """Add the lines of path that had no timestamp: the ones Logfile kept,
         plus a count of the rest."""
         self.messages.extend(
-            f'{path}:{lineno}: no timestamp: {line.rstrip()}' for lineno, line in lf.unparsed)
-        if lf.unparsed_count > len(lf.unparsed):
-            self.messages.append(
-                f'{path}: ... and {lf.unparsed_count - len(lf.unparsed)} more lines without timestamp')
-        self.unparsed_lines += lf.unparsed_count
+            f'{path}:{lineno}: no timestamp: {line.rstrip()}' for lineno, line in logfile.unparsed)
+        not_kept = logfile.unparsed_count - len(logfile.unparsed)
+        if not_kept:
+            self.messages.append(f'{path}: ... and {not_kept} more lines without timestamp')
+        self.unparsed_lines += logfile.unparsed_count
 
     def add_undetermined(self, message: str) -> None:
         self.messages.append(message)
@@ -212,16 +212,16 @@ def process_file(path: str, ignored: str | None, args: argparse.Namespace, analy
     if args.check:
         # plain stdout instead of rich, which would wrap long paths
         sys.stdout.write(f'{path}: {config.describe()}\n')
-    with Logfile(config, logger=logger) as lf:
+    with Logfile(config, logger=logger) as logfile:
         try:
-            for line in lf:
+            for line in logfile:
                 # checked before printing: reading this line may have skipped one without timestamp
-                if args.fail_fast and lf.unparsed_count:
+                if args.fail_fast and logfile.unparsed_count:
                     break
                 if not args.check:
-                    format_logline(line)
+                    print_logline(line)
         finally:
-            problems.add_unparsed(path, lf)
+            problems.add_unparsed(path, logfile)
 
 
 def main() -> None:

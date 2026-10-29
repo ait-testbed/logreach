@@ -29,7 +29,7 @@ def run_logreach(monkeypatch, tmp_path, path, *extra_args: str) -> tuple[list[Lo
     """Run the logreach CLI on path (file or directory) and return the lines it
     would print and its exit code."""
     printed: list[Logline] = []
-    monkeypatch.setattr(cli, 'format_logline', printed.append)
+    monkeypatch.setattr(cli, 'print_logline', printed.append)
     monkeypatch.setattr(sys, 'argv', [
         'logreach', str(path),
         '--ignorelist-file', str(tmp_path / 'ignore_list.txt'),
@@ -236,7 +236,7 @@ def test_logreach_dayfirst_flag(monkeypatch, tmp_path):
     logfile = tmp_path / 'suricata.log'
     logfile.write_text('1/9/2026 -- 13:25:40 - <Info> x\n')
     printed: list[Logline] = []
-    monkeypatch.setattr(cli, 'format_logline', printed.append)
+    monkeypatch.setattr(cli, 'print_logline', printed.append)
     monkeypatch.setattr(sys, 'argv', ['logreach', str(logfile), '--dayfirst',
                                       '--begin', '2026-09-01', '--end', '2026-09-02'])
     cli.main()
