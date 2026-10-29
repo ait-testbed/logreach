@@ -2,12 +2,13 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, tzinfo
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound
+from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, LogreachError, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
-from logtype.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
 
 # keys that json detection looks for, in this order
 JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts')
@@ -36,7 +37,8 @@ def create_if_missing(path: str) -> None:
 class IgnoreList:
     def __init__(self, ignores_file: str = '', extensions: Iterable[str] = ()):
         self.ignores_file = ignores_file
-        self.patterns: list[re.Pattern[str]] = []
+        # (compiled regex, where it comes from for ignore_reason())
+        self.patterns: list[tuple[re.Pattern[str], str]] = []
         if ignores_file:
             self.compile_regex()
         self.add_extensions(extensions)
@@ -48,17 +50,22 @@ class IgnoreList:
                 pattern = line.strip()
                 if not pattern or pattern.startswith('#'):
                     continue
-                self.patterns.append(re.compile(pattern))
+                self.patterns.append((re.compile(pattern), f'{self.ignores_file} pattern {pattern}'))
 
     def add_extensions(self, extensions: Iterable[str]) -> None:
         """Ignore paths ending in one of extensions, e.g. '.gz' or 'gz'."""
         for extension in extensions:
             if not extension.startswith('.'):
                 extension = '.' + extension
-            self.patterns.append(re.compile(re.escape(extension) + r'\Z'))
+            self.patterns.append((re.compile(re.escape(extension) + r'\Z'), f'extension {extension}'))
 
-    def is_ignored(self, path: str) -> bool:
-        return any(pattern.search(path) for pattern in self.patterns)
+    def ignore_reason(self, path: str) -> str | None:
+        """Name the first pattern that matches path, e.g. 'extension .gz', or
+        None if path is not ignored."""
+        for pattern, source in self.patterns:
+            if pattern.search(path):
+                return source
+        return None
 
 
 class KnownLogfilePaths:
@@ -76,13 +83,24 @@ class KnownLogfilePaths:
     def __contains__(self, path: str) -> bool:
         return path in self.data
 
-    def config_for(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
-        """Build the config stored for path in the types file."""
+    def config_for(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
+                   end: datetime | None = None, dayfirst: bool = False,
+                   timezone: tzinfo | None = None) -> LogConfig:
+        """Build the config stored for path in the types file.
+
+        Its dayfirst and timezone take precedence over the arguments.
+        """
         entry = self.data[path]
+        if 'timezone' in entry:
+            try:
+                timezone = ZoneInfo(entry['timezone'])
+            except (ZoneInfoNotFoundError, ValueError):
+                raise LogreachError(f'Unknown timezone in {self.types_file}: {entry["timezone"]}')
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
                               datetime_regex=entry.get('datetimeregex'),
-                              dayfirst=entry.get('dayfirst', False))
+                              begin=begin, end=end, dayfirst=entry.get('dayfirst', False) or dayfirst,
+                              timezone=timezone)
 
 
 class Analyzer:
@@ -95,27 +113,15 @@ class Analyzer:
         self._ignores = IgnoreList(ignores_file, ignored_extensions)
 
     @property
-    def types(self) -> KnownLogfilePaths | None:
-        return self._types
-
-    @property
     def ignores(self) -> IgnoreList:
         return self._ignores
 
-    def check_not_skipped(self, path: str) -> None:
-        """Raise IgnoredFile if the path matches the ignore list or has an
-        ignored extension."""
-        if self._ignores.is_ignored(path):
-            raise IgnoredFile
-
-    def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> LogConfig:
+    def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> str | None:
         """Can this file be read as logtype?
 
-        If yes return config if no raise LogTypeError. If the file is
-        empty, raise LogFileEmpty.
+        If yes return the JSON timestamp key (None for other types), if
+        no raise LogTypeError.
         """
-        if os.path.getsize(path) == 0:
-            raise LogFileEmpty(f'{path} is empty')
         try:
             datetime_key = json_timestamp_key(path) if logtype == LogType.JSON else None
             if logtype == LogType.JSON and datetime_key is None:
@@ -132,23 +138,30 @@ class Analyzer:
 
         if first_line is None:
             raise LogTypeError(f'No line in {path} parses as {logtype.value}')
-        return config
+        return datetime_key
 
-    def detect_config(self, path: str, allow_empty_timestamp: bool = True) -> LogConfig:
+    def detect_config(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
+                      end: datetime | None = None, dayfirst: bool = False,
+                      timezone: tzinfo | None = None) -> LogConfig:
         """Return the config from the types file, or of the first log type in
-        DETECTION_ORDER that can read the file.
+        DETECTION_ORDER that can read the file, with the time window and
+        timestamp settings.
 
-        If none work, raise LogTypeError.
+        If none work or the file is empty, raise LogTypeError.
         """
         if self._types and path in self._types:
-            return self._types.config_for(path, allow_empty_timestamp)
+            return self._types.config_for(path, allow_empty_timestamp, begin=begin, end=end,
+                                          dayfirst=dayfirst, timezone=timezone)
+        if os.path.getsize(path) == 0:
+            raise LogTypeError(f'{path} is empty')
 
         for logtype in DETECTION_ORDER:
             try:
-                return self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-            # must come before LogTypeError, which LogFileEmpty subclasses
-            except LogFileEmpty:
-                raise
+                # without the time window: a file with no line inside it still has a type
+                datetime_key = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
             except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
                 continue  # try matching the next LogType
+            return config_factory(path, logtype, allow_empty_timestamp=allow_empty_timestamp,
+                                  datetime_key=datetime_key, begin=begin, end=end, dayfirst=dayfirst,
+                                  timezone=timezone)
         raise LogTypeError(f'Unable to determine logtype for: {path}')

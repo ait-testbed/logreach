@@ -12,7 +12,6 @@ dynamic = ["version"]
 
 [project.scripts]
 logreach = "logreach.__cli__:main"
-logtype = "logtype.__cli__:main"
 
 [build-system]
 requires = ["setuptools>=61.0.0", "wheel"]

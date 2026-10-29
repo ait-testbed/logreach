@@ -1,11 +1,11 @@
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, tzinfo
 from pathlib import Path
 from types import TracebackType
 from typing import Self, TextIO
 
-from logreach.exceptions import DateTimeNotFound, LogreachError, NotInRange
+from logreach.exceptions import DateTimeNotFound, LogreachError
 
 from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
 from .schemas.logline import Logline
@@ -23,7 +23,7 @@ DEFAULT_TIMESTAMP_REGEX = {
 def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
                    datetime_key: str | None = None, datetime_regex: str | None = None,
                    begin: datetime | None = None, end: datetime | None = None,
-                   dayfirst: bool = False) -> LogConfig:
+                   dayfirst: bool = False, timezone: tzinfo | None = None) -> LogConfig:
     """Build the config that tells Logfile how to read timestamps from a
     logfile.
 
@@ -32,18 +32,19 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
     dayfirst reads ambiguous dates like 1/9/2026 as day/month.
+    timezone is attached to timestamps without one (None: UTC).
     """
     if logtype == LogType.JSON:
         if not datetime_key:
             raise TypeError('json-type needs a datetime_key to identify the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
-                             dayfirst=dayfirst)
+                             dayfirst=dayfirst, timezone=timezone)
 
     regex = datetime_regex or DEFAULT_TIMESTAMP_REGEX[logtype].value
     return RegexLogConfig(logfile_path=Path(logfile_path), regex_pattern=re.compile(regex),
                           begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
-                          dayfirst=dayfirst)
+                          dayfirst=dayfirst, timezone=timezone)
 
 
 class Logfile:
@@ -74,15 +75,17 @@ class Logfile:
         return self
 
     def __next__(self) -> Logline:
-        while True:
-            try:
-                line = self.readline()
-                if line is None:
-                    raise StopIteration
-                return line
-            # continue with next line if timestamp is not in range
-            except NotInRange:
-                continue
+        """Return the next line that has a timestamp inside the time window;
+        lines without timestamp are recorded in unparsed and skipped."""
+        if not self.filehandle:
+            raise LogreachError('Logfile is not open for reading')
+        for line in self.filehandle:
+            self.lineno += 1
+            timestamp = self._parse_timestamp(line)
+            if timestamp is not None and self.config.in_range(timestamp):
+                return Logline(timestamp=timestamp, raw=line, lineno=self.lineno,
+                               filename=str(self.config.logfile_path))
+        raise StopIteration
 
     def open(self) -> None:
         if not self.filehandle:
@@ -96,27 +99,21 @@ class Logfile:
         else:
             self.logger.warning("Won't close the file since it is not open")
 
-    def readline(self) -> Logline | None:
-        if not self.filehandle:
-            raise LogreachError('Logfile is not open for reading')
+    def _parse_timestamp(self, line: str) -> datetime | None:
+        """Parse the timestamp of line and attach the config's timezone if it
+        has none.
 
-        line = self.filehandle.readline()
-        if not line:
-            return None
-        self.lineno += 1
-
+        A line without timestamp is recorded in unparsed and returns
+        None, or raises DateTimeNotFound if empty timestamps are not
+        allowed.
+        """
         timestamp = self.config.parse_timestamp(line)
-        if timestamp is None and not self.config.allow_empty_timestamp:
+        if timestamp is not None:
+            return self.config.with_timezone(timestamp)
+        if not self.config.allow_empty_timestamp:
             self.logger.error(f'Unable to parse timestamp in line {self.lineno}: {line}')
             raise DateTimeNotFound(f'Timestamp not found in line {self.lineno}')
-
-        if timestamp is None:
-            self.unparsed_count += 1
-            if len(self.unparsed) < MAX_KEPT_UNPARSED:
-                self.unparsed.append((self.lineno, line))
-        # __next__ skips lines without timestamp or outside the time window
-        if timestamp is None or not self.config.in_range(timestamp):
-            raise NotInRange(f'line number {self.lineno} is not in timerange')
-
-        return Logline(timestamp=timestamp, raw=line, lineno=self.lineno,
-                       filename=str(self.config.logfile_path))
+        self.unparsed_count += 1
+        if len(self.unparsed) < MAX_KEPT_UNPARSED:
+            self.unparsed.append((self.lineno, line))
+        return None

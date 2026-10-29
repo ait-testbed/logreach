@@ -1,8 +1,12 @@
 import re
+from datetime import datetime
 
 import pytest
 
-from logreach.schemas.logfileconfig import TimestampRegex
+from logreach.logfile import config_factory
+from logreach.schemas.logfileconfig import LogType, TimestampRegex
+
+# --- timestamp regexes
 
 
 @pytest.mark.parametrize('line, expected', [
@@ -31,3 +35,39 @@ def test_audit_logs():
                      'kernel=6.6.62+rpt-rpi-2712 auid=4294967295 pid=700 uid=0 ses=4294967295 '
                      'res=successAUID="unset" UID="root"')
     assert match.group(1) == '1788266693.261'
+
+
+# --- missing year
+
+@pytest.mark.parametrize('window, line, expected', [
+    pytest.param({'begin': datetime(2020, 9, 1)}, 'Sep  1 13:25:26 host app: x\n',
+                 datetime(2020, 9, 1, 13, 25, 26), id='from-begin'),
+    pytest.param({'end': datetime(2020, 9, 1)}, 'Sep  1 13:25:26 host app: x\n',
+                 datetime(2020, 9, 1, 13, 25, 26), id='from-end'),
+    pytest.param({'begin': datetime(2020, 1, 1)}, '2026-09-01 13:25:35 status x\n',
+                 datetime(2026, 9, 1, 13, 25, 35), id='year-in-line-kept'),
+])
+def test_missing_year_comes_from_begin_or_end(window, line, expected):
+    config = config_factory('syslog', LogType.SYSLOG, **window)
+    assert config.parse_timestamp(line) == expected
+
+
+# --- dayfirst
+
+@pytest.mark.parametrize('line, dayfirst, expected', [
+    pytest.param('1/9/2026 -- 13:25:40 - <Info> x\n', True,
+                 datetime(2026, 9, 1, 13, 25, 40), id='suricata-dayfirst'),
+    pytest.param('1/9/2026 -- 13:25:40 - <Info> x\n', False,
+                 datetime(2026, 1, 9, 13, 25, 40), id='suricata-default'),
+    pytest.param('09/01/2026-13:25:37 [**] x\n', False,
+                 datetime(2026, 9, 1, 13, 25, 37), id='monthfirst-default'),
+])
+def test_dayfirst_decides_ambiguous_dates(line, dayfirst, expected):
+    config = config_factory('suricata.log', LogType.SYSLOG, dayfirst=dayfirst)
+    assert config.dayfirst is dayfirst
+    assert config.parse_timestamp(line) == expected
+
+
+def test_dayfirst_json():
+    config = config_factory('app.json', LogType.JSON, datetime_key='time', dayfirst=True)
+    assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)

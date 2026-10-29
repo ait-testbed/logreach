@@ -1,21 +1,12 @@
-import json
-import sys
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
-import logtype.__cli__ as cli
+from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
+from logreach.exceptions import LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
-from logreach.schemas.logline import Logline
-from logtype.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
-from logtype.exceptions import IgnoredFile, LogFileEmpty, LogTypeError
-
-SYSLOG = ('Sep  1 14:08:07 videoserver systemd[1]: Started Session 16 of user superuser.\n'
-          'Sep  1 14:09:00 videoserver systemd[1]: Started Session 17 of user superuser.\n')
-AUDIT = 'type=DAEMON_START msg=audit(1788266693.261:9117): op=start ver=3.0.9 res=success\n'
-ACCESS = '127.0.0.1 - - [01/Sep/2026:14:08:07 +0000] "GET / HTTP/1.1" 200 512\n'
-# spaces after the separators: the loose syslog regex used to claim this line
-JSON_TIME = '{"time": "2026-09-01T14:09:21+00:00", "msg": "session started"}\n'
-EVE_JSON = '{"timestamp": "2026-09-01T14:09:21.639533+0000", "event_type": "alert"}\n'
+from samples import ACCESS, AUDIT, EVE_JSON, JSON_TIME, SYSLOG
 
 
 def detect(tmp_path, content: str) -> LogConfig:
@@ -24,35 +15,6 @@ def detect(tmp_path, content: str) -> LogConfig:
     logfile = tmp_path / 'logfile'
     logfile.write_text(content)
     return Analyzer(types_file='', ignores_file='').detect_config(str(logfile))
-
-
-def make_logs(tmp_path, files: dict[str, str | bytes]):
-    """Create tmp_path/logs containing files (name -> content)."""
-    logs = tmp_path / 'logs'
-    logs.mkdir()
-    for name, content in files.items():
-        if isinstance(content, bytes):
-            (logs / name).write_bytes(content)
-        else:
-            (logs / name).write_text(content)
-    return logs
-
-
-def run_logtype(monkeypatch, tmp_path, logs_dir, *extra_args: str) -> tuple[list[Logline], int]:
-    """Run the logtype CLI on logs_dir and return the lines it would print and
-    its exit code."""
-    printed: list[Logline] = []
-    monkeypatch.setattr(cli, 'format_logline', printed.append)
-    monkeypatch.setattr(sys, 'argv', [
-        'logtype', '--path', str(logs_dir),
-        '--ignorelist-file', str(tmp_path / 'ignore_list.txt'),
-        '--types-file', str(tmp_path / 'logtypes.json'),
-        *extra_args])
-    try:
-        cli.main()
-    except SystemExit as e:
-        return printed, e.code
-    return printed, 0
 
 
 # --- type detection
@@ -79,7 +41,7 @@ def test_detects_json_and_its_timestamp_key(tmp_path, content, key):
 
 
 def test_detect_config_empty_file(tmp_path):
-    with pytest.raises(LogFileEmpty):
+    with pytest.raises(LogTypeError, match='is empty'):
         detect(tmp_path, '')
 
 
@@ -88,14 +50,12 @@ def test_detect_config_file_without_timestamps(tmp_path):
         detect(tmp_path, 'no timestamps here\njust text\n')
 
 
-def test_detect_config_uses_types_file(tmp_path):
+def test_detect_config_uses_types_file(tmp_path, types_file):
     # a format no built-in regex knows, so only the types file entry can read it
     logfile = tmp_path / 'web_php.log'
     logfile.write_text('9/1/26, 1:25:44 PM UTC.519574 web_php[1170].INF [Login successful]\n')
-    entry = {'logfile_path': str(logfile), 'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'}
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text(json.dumps(entry) + '\n')
-    config = Analyzer(types_file=str(types_file), ignores_file='').detect_config(str(logfile))
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'})
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(str(logfile))
     assert isinstance(config, RegexLogConfig)
     assert config.regex_pattern.pattern == r'\A(.+?UTC)'
 
@@ -104,162 +64,66 @@ def test_detect_config_uses_types_file(tmp_path):
     pytest.param({'dayfirst': True}, True, id='set'),
     pytest.param({}, False, id='default'),
 ])
-def test_detect_config_reads_dayfirst_from_types_file(tmp_path, entry, dayfirst):
+def test_detect_config_reads_dayfirst_from_types_file(tmp_path, types_file, entry, dayfirst):
     logfile = tmp_path / 'suricata.log'
     logfile.write_text('1/9/2026 -- 13:25:40 - <Info> x\n')
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text(json.dumps({'logfile_path': str(logfile), 'type': 'syslog', **entry}) + '\n')
-    config = Analyzer(types_file=str(types_file), ignores_file='').detect_config(str(logfile))
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', **entry})
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(str(logfile))
     assert config.dayfirst is dayfirst
     assert config.parse_timestamp(logfile.read_text()).month == (9 if dayfirst else 1)
 
 
+def test_detect_config_finds_type_without_lines_in_time_window(tmp_path):
+    # detection must not use the window: no line of this file is inside it
+    logfile = tmp_path / 'syslog'
+    logfile.write_text(SYSLOG)
+    begin = datetime(2026, 9, 2, tzinfo=UTC)
+    config = Analyzer(types_file='', ignores_file='').detect_config(
+        str(logfile), begin=begin, dayfirst=True, timezone=ZoneInfo('Europe/Vienna'))
+    assert config.describe() == 'syslog (Europe/Vienna)'
+    assert (config.begin, config.end, config.dayfirst) == (begin, None, True)
+
+
+@pytest.mark.parametrize('entry, timezone', [
+    pytest.param({'timezone': 'Europe/Vienna'}, 'Europe/Vienna', id='from-types-file'),
+    pytest.param({}, 'America/New_York', id='from-argument'),
+])
+def test_detect_config_types_file_settings_take_precedence(tmp_path, types_file, entry, timezone):
+    logfile = tmp_path / 'syslog'
+    logfile.write_text(SYSLOG)
+    entries = types_file({'logfile_path': str(logfile), 'type': 'syslog', **entry})
+    begin = datetime(2026, 9, 1, tzinfo=UTC)
+    config = Analyzer(types_file=str(entries), ignores_file='').detect_config(
+        str(logfile), begin=begin, timezone=ZoneInfo('America/New_York'))
+    assert config.timezone == ZoneInfo(timezone)
+    assert config.begin == begin
+
+
 # --- ignore list and types file
 
-def test_ignore_list_skips_blank_lines_and_comments(tmp_path):
-    ignore_file = tmp_path / 'ignore_list.txt'
-    ignore_file.write_text('# compressed logs\n\\.gz\\Z  \n\n   \n')
-    ignores = IgnoreList(str(ignore_file))
-    assert [pattern.pattern for pattern in ignores.patterns] == ['\\.gz\\Z']
-    assert ignores.is_ignored('/var/log/syslog.1.gz')
-    assert not ignores.is_ignored('/var/log/syslog')
+def test_ignore_list_reads_patterns_from_file_and_extensions(ignore_list):
+    ignore_file = ignore_list('# compressed logs', 'README\\Z  ', '', '   ')
+    analyzer = Analyzer(types_file='', ignores_file=str(ignore_file), ignored_extensions=['gz'])
+    # blank lines and comments are skipped, surrounding spaces stripped
+    assert [pattern.pattern for pattern, _source in analyzer.ignores.patterns] == ['README\\Z', '\\.gz\\Z']
+    assert analyzer.ignores.ignore_reason('/var/log/README') == f'{ignore_file} pattern README\\Z'
+    assert analyzer.ignores.ignore_reason('/var/log/syslog.1.gz') == 'extension .gz'
+    assert analyzer.ignores.ignore_reason('/var/log/syslog') is None
 
 
-@pytest.mark.parametrize('path, ignored', [
-    ('/var/log/syslog.1.gz', True),
-    ('/var/log/journal/system.journal~', True),
-    ('/etc/app.conf', True),  # extension given without dot
-    ('/etc/app.config', False),
-    ('/var/log/gz', False),
-    ('/var/log/syslog', False),
+@pytest.mark.parametrize('path, reason', [
+    ('/var/log/syslog.1.gz', 'extension .gz'),
+    ('/var/log/journal/system.journal~', 'extension .journal~'),
+    ('/etc/app.conf', 'extension .conf'),  # extension given without dot
+    ('/etc/app.config', None),
+    ('/var/log/gz', None),
+    ('/var/log/syslog', None),
 ])
-def test_ignore_list_ignores_extensions(path, ignored):
-    ignores = IgnoreList(extensions=['.gz', '.journal~', 'conf'])
-    assert ignores.is_ignored(path) is ignored
+def test_ignore_list_ignores_extensions(path, reason):
+    assert IgnoreList(extensions=['.gz', '.journal~', 'conf']).ignore_reason(path) == reason
 
 
-def test_ignore_list_combines_file_and_extensions(tmp_path):
-    ignore_file = tmp_path / 'ignore_list.txt'
-    ignore_file.write_text('README\n')
-    ignores = IgnoreList(str(ignore_file), extensions=['.gz'])
-    assert ignores.is_ignored('/var/log/README')
-    assert ignores.is_ignored('/var/log/syslog.1.gz')
-    assert not ignores.is_ignored('/var/log/syslog')
-
-
-def test_known_logfile_paths_contains_listed_paths(tmp_path):
-    types_file = tmp_path / 'logtypes.json'
-    types_file.write_text('{"logfile_path": "/var/log/suricata/eve.json", "type": "json"}\n')
-    known = KnownLogfilePaths(str(types_file))
+def test_known_logfile_paths_contains_listed_paths(types_file):
+    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json'})))
     assert '/var/log/suricata/eve.json' in known
     assert '/var/log/syslog' not in known
-
-
-def test_check_not_skipped_raises_for_ignored_paths(tmp_path):
-    ignores_file = tmp_path / 'ignore_list.txt'
-    ignores_file.write_text('\\.gz\\Z\n')
-    analyzer = Analyzer(types_file='', ignores_file=str(ignores_file))
-    with pytest.raises(IgnoredFile):
-        analyzer.check_not_skipped('/var/log/syslog.1.gz')
-    analyzer.check_not_skipped('/var/log/syslog')
-
-
-# --- logtype CLI
-
-def test_logtype_prints_syslog_lines(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert [line.lineno for line in printed] == [1, 2]
-    assert exit_code == 0
-
-
-def test_logtype_reports_undetectable_file_at_the_end(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'binary': bytes(range(256))})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert len(printed) == 2  # the syslog file is still printed completely
-    assert exit_code == 1
-    assert f'Unable to determine logtype for: {logs / "binary"}' in capsys.readouterr().err
-
-
-def test_logtype_reports_lines_without_timestamp_at_the_end(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG + '[info] no timestamp here\n'})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs)
-    assert len(printed) == 2
-    assert exit_code == 1
-    assert f'{logs / "syslog"}:3: no timestamp: [info] no timestamp here' in capsys.readouterr().err
-
-
-def test_logtype_skips_ignored_files(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.old': SYSLOG})  # .old is no default extension
-    (tmp_path / 'ignore_list.txt').write_text('\\.old\\Z\n')
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
-
-
-def test_logtype_skips_default_ignored_extensions(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs)
-    assert {line.filename for line in printed} == {str(logs / 'syslog')}
-
-
-@pytest.mark.parametrize('extensions, read', [
-    pytest.param('', {'syslog', 'syslog.1.gz', 'app.conf'}, id='none'),
-    pytest.param('.conf', {'syslog', 'syslog.1.gz'}, id='custom'),
-    pytest.param(' .conf , gz ', {'syslog'}, id='spaces-and-no-dot'),
-])
-def test_logtype_ignored_extension_option(monkeypatch, tmp_path, extensions, read):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--ignored-extension', extensions)
-    assert {line.filename for line in printed} == {str(logs / name) for name in read}
-
-
-def test_logtype_require_timestamp_detects_audit(monkeypatch, tmp_path):
-    logs = make_logs(tmp_path, {'audit.log': AUDIT})
-    printed, _ = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
-    assert len(printed) == 1
-
-
-def test_logtype_require_timestamp_stops_at_first_line_without_timestamp(monkeypatch, tmp_path, capsys):
-    lines = SYSLOG.splitlines(keepends=True)
-    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--require-timestamp')
-    assert [line.lineno for line in printed] == [1]
-    assert exit_code == 1
-    assert f'{logs / "syslog"}: Timestamp not found in line 2' in capsys.readouterr().err
-
-
-def test_logtype_lists_only_max_problems_and_counts_the_rest(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
-    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--max-problems', '1')
-    err = capsys.readouterr().err
-    assert exit_code == 1
-    assert err.count('Unable to determine logtype') == 1
-    assert '... and 2 more (see --max-problems)' in err
-    assert '0 lines without timestamp, 3 undetermined files' in err
-
-
-def test_logtype_fail_fast_stops_at_first_undetermined_file(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
-    _, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
-    assert exit_code == 1
-    assert capsys.readouterr().err.count('Unable to determine logtype') == 1
-
-
-def test_logtype_fail_fast_stops_within_a_file(monkeypatch, tmp_path, capsys):
-    lines = SYSLOG.splitlines(keepends=True)
-    logs = make_logs(tmp_path, {'syslog': lines[0] + 'no timestamp\n' + lines[1]})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--fail-fast')
-    assert [line.lineno for line in printed] == [1]  # line 3 is never printed
-    assert exit_code == 1
-    assert ':2: no timestamp: no timestamp' in capsys.readouterr().err
-
-
-def test_logtype_check_shows_types_instead_of_lines(monkeypatch, tmp_path, capsys):
-    logs = make_logs(tmp_path, {'syslog': SYSLOG, 'eve.json': EVE_JSON})
-    printed, exit_code = run_logtype(monkeypatch, tmp_path, logs, '--check')
-    assert printed == []
-    assert exit_code == 0
-    assert sorted(capsys.readouterr().out.splitlines()) == [
-        f'{logs / "eve.json"}: json (timestamp)',
-        f'{logs / "syslog"}: syslog',
-    ]
