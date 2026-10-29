@@ -66,7 +66,10 @@ Both are read from the current directory and created empty if missing:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: see [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). 
+
+## Security
+see [SECURITY.md](SECURITY.md).
 
 ## License
 
