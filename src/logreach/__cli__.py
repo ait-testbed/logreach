@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -123,6 +124,9 @@ def parse_args() -> argparse.Namespace:
                         help='read ambiguous dates like 1/9/2026 as day/month (1 September)')
     parser.add_argument('--begin', help='filter from this timestamp on', type=parsed_datetime)
     parser.add_argument('--end', help='filter logs until this timestamp', type=parsed_datetime)
+    parser.add_argument('--grep', action='append', metavar='REGEX',
+                        help='print only lines matching this regex; repeat it to print lines matching any')
+    parser.add_argument('--ignore-case', action='store_true', help='--grep ignores upper and lower case')
     parser.add_argument('--timezone', default='UTC', type=parsed_timezone,
                         help='timezone of timestamps without one, in the logs and in --begin / --end, '
                              'e.g. Europe/Vienna; a "timezone" in the types file overrides it per file')
@@ -147,6 +151,14 @@ def parse_args() -> argparse.Namespace:
         parser.error('--datetimekey and --datetimeregex require --type')
     if not os.path.exists(args.path):
         parser.error(f'{args.path} does not exist')
+    if args.grep:
+        flags = re.IGNORECASE if args.ignore_case else 0
+        try:
+            args.grep = [re.compile(pattern, flags) for pattern in args.grep]
+        except re.error as e:
+            parser.error(f'invalid --grep regex {e.pattern!r}: {e}')
+        if args.check:
+            sys.stderr.write('--grep is ignored with --check\n')
     # --begin / --end without timezone are meant in --timezone, for every file
     if args.begin and args.begin.tzinfo is None:
         args.begin = args.begin.replace(tzinfo=args.timezone)
@@ -213,6 +225,8 @@ def process_file(path: str, ignored: str | None, args: argparse.Namespace, analy
                 # checked before printing: reading this line may have skipped one without timestamp
                 if args.fail_fast and logfile.unparsed_count:
                     break
+                if args.grep and not any(pattern.search(line.raw) for pattern in args.grep):
+                    continue
                 if not args.check:
                     print_logline(line)
         finally:
