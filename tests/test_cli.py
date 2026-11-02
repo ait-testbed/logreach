@@ -216,6 +216,22 @@ def test_fail_fast_stops_within_a_file(make_logs, run_logreach, capsys):
     assert ':2: no timestamp: no timestamp' in capsys.readouterr().err
 
 
+# --- --grep
+
+@pytest.mark.parametrize('extra_args, linenos', [
+    pytest.param(('--grep', 'Session 17'), [2], id='one'),
+    pytest.param(('--grep', 'Session 17', '--grep', r'Session 1\d of'), [1, 2], id='any-of-several'),
+    pytest.param(('--grep', 'session 17'), [], id='case-sensitive'),
+    pytest.param(('--grep', 'session 17', '--ignore-case'), [2], id='ignore-case'),
+    pytest.param(('--grep', 'Session', '--begin', '2026-09-01 14:08:30'), [2], id='within-time-window'),
+])
+def test_grep_prints_only_matching_lines(make_logs, run_logreach, extra_args, linenos):
+    logs = make_logs({'syslog': SYSLOG})
+    printed, exit_code = run_logreach(logs, *extra_args)
+    assert [line.lineno for line in printed] == linenos
+    assert exit_code == 0
+
+
 # --- --check
 
 def test_check_shows_types_instead_of_lines(make_logs, run_logreach, capsys):
@@ -272,6 +288,12 @@ def test_json_without_datetimekey_is_a_usage_error(run_logreach, tmp_path, capsy
     _, exit_code = run_logreach(tmp_path / 'app.json', '--type', 'json')
     assert exit_code == 2
     assert '--type json requires --datetimekey' in capsys.readouterr().err
+
+
+def test_invalid_grep_regex_is_a_usage_error(run_logreach, tmp_path, capsys):
+    _, exit_code = run_logreach(tmp_path, '--grep', 'a(')
+    assert exit_code == 2
+    assert "invalid --grep regex 'a('" in capsys.readouterr().err
 
 
 def test_unknown_timezone_is_a_usage_error(run_logreach, tmp_path, capsys):
