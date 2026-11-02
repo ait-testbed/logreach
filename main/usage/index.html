@@ -122,6 +122,9 @@ logreach<span class="w"> </span>/var/log/syslog<span class="w"> </span>--begin<s
 <span class="c1"># every logfile below a directory</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--end<span class="w"> </span><span class="s1">'2026-09-01 15:00'</span>
 
+<span class="c1"># only the lines in the window that match any of the regexes (--ignore-case for any case)</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'password'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'sudo:.*'</span>
+
 <span class="c1"># only show the detected type of each file and the problems found</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check
 
