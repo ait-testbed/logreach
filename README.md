@@ -30,6 +30,9 @@ logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 # every logfile below a directory
 logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
+# only the lines in the window that match any of the regexes (--ignore-case for any case)
+logreach gather/logs --begin '2026-09-01 14:00' --grep 'password' --grep 'sudo:.*'
+
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
 
@@ -66,7 +69,7 @@ Both are read from the current directory and created empty if missing:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). 
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 see [SECURITY.md](SECURITY.md).
