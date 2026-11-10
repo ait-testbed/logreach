@@ -8,7 +8,7 @@ from typing import Pattern
 
 from dateutil.parser import ParserError, parse
 
-from logreach.exceptions import DateTimeKeyNotFound
+from logreach.exceptions import NoTimestamp
 
 
 class LogType(Enum):
@@ -111,8 +111,23 @@ class JsonLogConfig(LogConfig):
         return f'json ({self.datetime_key}, {self.timezone_name})'
 
     def parse_timestamp(self, logline: str) -> datetime | None:
-        record = json.loads(logline)
+        """Raises NoTimestamp saying why a line has none: Logfile reports it
+        and reads on."""
+        try:
+            record = json.loads(logline)
+        except json.JSONDecodeError as e:  # e.g. a line cut off mid-write
+            raise NoTimestamp(f'invalid JSON ({e.msg}, column {e.colno})')
+        if not isinstance(record, dict):
+            raise NoTimestamp('no JSON object')
         if self.datetime_key not in record:
-            raise DateTimeKeyNotFound(
-                f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
-        return parse(record[self.datetime_key], default=self.default_datetime, dayfirst=self.dayfirst)
+            raise NoTimestamp(f'no "{self.datetime_key}" key')
+        value = record[self.datetime_key]
+        try:
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                # shortcut: seconds only; epochs in milliseconds are out of range and count as no date
+                return datetime.fromtimestamp(value, timezone.utc)
+            if isinstance(value, str):
+                return parse(value, default=self.default_datetime, dayfirst=self.dayfirst)
+        except (ParserError, ValueError, OverflowError, OSError):
+            pass
+        raise NoTimestamp(f'"{self.datetime_key}" is no date')

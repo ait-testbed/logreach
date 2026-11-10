@@ -1,5 +1,4 @@
 import argparse
-import json
 import logging
 import os
 import re
@@ -16,13 +15,11 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.exceptions import LogreachError, LogTypeError
+from logreach.exceptions import FILE_ERRORS, LogreachError, LogTypeError
+from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 from logreach.schemas.logline import Logline
-
-# errors while reading one file: reported at the end, the run goes on with the next file
-FILE_ERRORS = (LogreachError, OSError, UnicodeDecodeError, json.JSONDecodeError)
 
 
 def setup_logger() -> logging.Logger:
@@ -65,6 +62,14 @@ def print_logline(logline: Logline) -> None:
 #           f'{logline.raw.rstrip("\r\n")}\n')
 
 
+# characters of a log line shown in the problem report; the line number leads to the rest
+MAX_SHOWN_CHARS = 200
+
+
+def shortened(text: str) -> str:
+    return text if len(text) <= MAX_SHOWN_CHARS else text[:MAX_SHOWN_CHARS] + '…'
+
+
 @dataclass
 class Problems:
     """Problems collected during the run, reported at the end so a run never
@@ -78,8 +83,8 @@ class Problems:
     def add_unparsed(self, path: str, logfile: Logfile) -> None:
         """Add the lines of path that had no timestamp: the ones Logfile kept,
         plus a count of the rest."""
-        self.messages.extend(
-            f'{path}:{lineno}: no timestamp: {line.rstrip()}' for lineno, line in logfile.unparsed)
+        self.messages.extend(f'{path}:{lineno}: {reason}: {shortened(line.rstrip())}'
+                             for lineno, reason, line in logfile.unparsed)
         not_kept = logfile.unparsed_count - len(logfile.unparsed)
         if not_kept:
             self.messages.append(f'{path}: ... and {not_kept} more lines without timestamp')
@@ -143,6 +148,9 @@ def parse_args() -> argparse.Namespace:
                         help='stop at the first problem instead of reporting all problems at the end')
     parser.add_argument('--check', action='store_true',
                         help="show each file's detected type instead of its lines, to find problems fast")
+    parser.add_argument('-i', '--interactive', action='store_true',
+                        help='with --check: ask for the type of each file whose type is not detected, '
+                             'and save the answer in --types-file')
     args = parser.parse_args()
 
     if args.type == LogType.JSON.value and not args.datetimekey:
@@ -151,6 +159,13 @@ def parse_args() -> argparse.Namespace:
         parser.error('--datetimekey and --datetimeregex require --type')
     if not os.path.exists(args.path):
         parser.error(f'{args.path} does not exist')
+    if args.interactive:
+        if not args.check:
+            parser.error('--interactive requires --check')
+        if not args.types_file:
+            parser.error('--interactive requires a --types-file to save the answers in')
+        if not sys.stdin.isatty():
+            parser.error('--interactive needs a terminal to ask questions')
     if args.grep:
         flags = re.IGNORECASE if args.ignore_case else 0
         try:
@@ -213,8 +228,13 @@ def process_file(path: str, ignored: str | None, args: argparse.Namespace, analy
     try:
         config = make_config(path, args, analyzer)
     except LogTypeError as e:
-        problems.add_undetermined(str(e))
-        return
+        answer = ask_and_save_logtype(path, e, analyzer) if args.interactive else Answer.SKIPPED
+        if answer == Answer.SKIPPED:
+            problems.add_undetermined(str(e))
+            return
+        if answer == Answer.IGNORED:
+            return process_file(path, analyzer.ignores.ignore_reason(path), args, analyzer, logger, problems)
+        config = make_config(path, args, analyzer)  # now from the types file
 
     if args.check:
         # plain stdout instead of rich, which would wrap long paths
@@ -238,8 +258,12 @@ def main() -> None:
     logger = setup_logger()
     ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
                           if extension.strip()]
-    analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
-                        ignored_extensions=ignored_extensions)
+    try:
+        analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
+                            ignored_extensions=ignored_extensions)
+    except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
+        sys.stderr.write(f'logreach: {e}\n')
+        sys.exit(2)
     problems = Problems()
 
     try:

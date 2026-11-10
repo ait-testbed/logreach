@@ -1,8 +1,10 @@
+import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
+from logreach.exceptions import NoTimestamp
 from logreach.logfile import config_factory
 from logreach.schemas.logfileconfig import LogType, TimestampRegex
 
@@ -71,3 +73,29 @@ def test_dayfirst_decides_ambiguous_dates(line, dayfirst, expected):
 def test_dayfirst_json():
     config = config_factory('app.json', LogType.JSON, datetime_key='time', dayfirst=True)
     assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)
+
+
+@pytest.mark.parametrize('value, expected', [
+    pytest.param(1756735200, datetime(2025, 9, 1, 14, 0, tzinfo=UTC), id='epoch-seconds'),
+    pytest.param(1756735200.5, datetime(2025, 9, 1, 14, 0, 0, 500000, tzinfo=UTC), id='epoch-float'),
+])
+def test_json_timestamp_values(value, expected):
+    config = config_factory('app.json', LogType.JSON, datetime_key='time')
+    assert config.parse_timestamp(json.dumps({'time': value})) == expected
+
+
+@pytest.mark.parametrize('line, reason', [
+    pytest.param('{"time": "2026-09-01', 'invalid JSON (Unterminated string starting at, column 10)',
+                 id='cut-off'),
+    pytest.param('[1, 2]', 'no JSON object', id='no-object'),
+    pytest.param('{"msg": "x"}', 'no "time" key', id='no-key'),
+    pytest.param('{"time": "not a date"}', '"time" is no date', id='no-date'),
+    pytest.param('{"time": 1756735200123}', '"time" is no date', id='epoch-milliseconds'),
+    pytest.param('{"time": true}', '"time" is no date', id='bool'),
+    pytest.param('{"time": null}', '"time" is no date', id='null'),
+])
+def test_json_line_without_timestamp_says_why(line, reason):
+    config = config_factory('app.json', LogType.JSON, datetime_key='time')
+    with pytest.raises(NoTimestamp) as error:
+        config.parse_timestamp(line)
+    assert str(error.value) == reason

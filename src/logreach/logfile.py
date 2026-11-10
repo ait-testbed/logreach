@@ -5,7 +5,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self, TextIO
 
-from logreach.exceptions import DateTimeNotFound, LogreachError
+from logreach.exceptions import DateTimeNotFound, LogreachError, NoTimestamp
 
 from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
 from .schemas.logline import Logline
@@ -59,8 +59,8 @@ class Logfile:
         self.logger = logger
         self.filehandle: TextIO | None = None
         self.lineno: int = 0
-        # lines skipped because they have no timestamp: the first few as (lineno, line), and a count
-        self.unparsed: list[tuple[int, str]] = []
+        # lines skipped because they have no timestamp: the first few as (lineno, reason, line), and a count
+        self.unparsed: list[tuple[int, str, str]] = []
         self.unparsed_count: int = 0
 
     def __enter__(self) -> Self:
@@ -107,13 +107,16 @@ class Logfile:
         None, or raises DateTimeNotFound if empty timestamps are not
         allowed.
         """
-        timestamp = self.config.parse_timestamp(line)
+        reason = 'no timestamp'
+        try:
+            timestamp = self.config.parse_timestamp(line)
+        except NoTimestamp as e:
+            timestamp, reason = None, str(e)
         if timestamp is not None:
             return self.config.with_timezone(timestamp)
         if not self.config.allow_empty_timestamp:
-            self.logger.error(f'Unable to parse timestamp in line {self.lineno}: {line}')
-            raise DateTimeNotFound(f'Timestamp not found in line {self.lineno}')
+            raise DateTimeNotFound(f'line {self.lineno}: {reason}')
         self.unparsed_count += 1
         if len(self.unparsed) < MAX_KEPT_UNPARSED:
-            self.unparsed.append((self.lineno, line))
+            self.unparsed.append((self.lineno, reason, line))
         return None

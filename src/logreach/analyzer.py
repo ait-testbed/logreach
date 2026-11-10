@@ -6,7 +6,7 @@ from datetime import datetime, tzinfo
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, LogreachError, LogTypeError
+from logreach.exceptions import DateTimeNotFound, LogreachError, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 
@@ -34,6 +34,15 @@ def create_if_missing(path: str) -> None:
             pass
 
 
+def append_line(path: str, line: str) -> None:
+    """Append line to the file at path, after a newline if the file does not
+    end with one; existing lines stay as they are."""
+    with open(path, 'a+') as file:
+        file.seek(0)
+        text = file.read()
+        file.write(('\n' if text and not text.endswith('\n') else '') + line + '\n')
+
+
 class IgnoreList:
     def __init__(self, ignores_file: str = '', extensions: Iterable[str] = ()):
         self.ignores_file = ignores_file
@@ -51,6 +60,13 @@ class IgnoreList:
                 if not pattern or pattern.startswith('#'):
                     continue
                 self.patterns.append((re.compile(pattern), f'{self.ignores_file} pattern {pattern}'))
+
+    def add(self, pattern: str) -> None:
+        """Ignore paths that match the regex pattern from now on, and save it
+        in the ignores file."""
+        compiled = re.compile(pattern)
+        append_line(self.ignores_file, pattern)
+        self.patterns.append((compiled, f'{self.ignores_file} pattern {pattern}'))
 
     def add_extensions(self, extensions: Iterable[str]) -> None:
         """Ignore paths ending in one of extensions, e.g. '.gz' or 'gz'."""
@@ -75,13 +91,27 @@ class KnownLogfilePaths:
         self._read_file()
 
     def _read_file(self) -> None:
+        """Read one entry per line; blank lines are skipped, broken ones raise
+        LogreachError."""
         with open(self.types_file, 'r') as list_file:
-            for line in list_file:
-                item = json.loads(line)
-                self.data[item['logfile_path']] = item
+            for lineno, line in enumerate(list_file, 1):
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                    self.data[item['logfile_path']] = item
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    raise LogreachError(f'{self.types_file}:{lineno}: no JSON object with "logfile_path": '
+                                        f'{line.strip()}')
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
+
+    def add(self, entry: dict[str, Any]) -> None:
+        """Save entry in the types file; it replaces an entry for the same path
+        from now on."""
+        append_line(self.types_file, json.dumps(entry))
+        self.data[entry['logfile_path']] = entry
 
     def config_for(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
                    end: datetime | None = None, dayfirst: bool = False,
@@ -115,6 +145,10 @@ class Analyzer:
     @property
     def ignores(self) -> IgnoreList:
         return self._ignores
+
+    @property
+    def types(self) -> KnownLogfilePaths | None:
+        return self._types
 
     def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> str | None:
         """Can this file be read as logtype?
@@ -159,7 +193,7 @@ class Analyzer:
             try:
                 # without the time window: a file with no line inside it still has a type
                 datetime_key = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-            except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
+            except (LogTypeError, DateTimeNotFound):
                 continue  # try matching the next LogType
             return config_factory(path, logtype, allow_empty_timestamp=allow_empty_timestamp,
                                   datetime_key=datetime_key, begin=begin, end=end, dayfirst=dayfirst,
