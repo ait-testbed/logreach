@@ -62,6 +62,14 @@ def print_logline(logline: Logline) -> None:
 #           f'{logline.raw.rstrip("\r\n")}\n')
 
 
+# characters of a log line shown in the problem report; the line number leads to the rest
+MAX_SHOWN_CHARS = 200
+
+
+def shortened(text: str) -> str:
+    return text if len(text) <= MAX_SHOWN_CHARS else text[:MAX_SHOWN_CHARS] + '…'
+
+
 @dataclass
 class Problems:
     """Problems collected during the run, reported at the end so a run never
@@ -75,8 +83,8 @@ class Problems:
     def add_unparsed(self, path: str, logfile: Logfile) -> None:
         """Add the lines of path that had no timestamp: the ones Logfile kept,
         plus a count of the rest."""
-        self.messages.extend(
-            f'{path}:{lineno}: no timestamp: {line.rstrip()}' for lineno, line in logfile.unparsed)
+        self.messages.extend(f'{path}:{lineno}: {reason}: {shortened(line.rstrip())}'
+                             for lineno, reason, line in logfile.unparsed)
         not_kept = logfile.unparsed_count - len(logfile.unparsed)
         if not_kept:
             self.messages.append(f'{path}: ... and {not_kept} more lines without timestamp')

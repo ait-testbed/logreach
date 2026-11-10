@@ -159,7 +159,7 @@ def test_json_line_without_key_is_reported_and_reading_goes_on(make_logs, run_lo
     printed, exit_code = run_logreach(logs)
     assert [line.lineno for line in printed] == [1, 3]
     assert exit_code == 1
-    assert f'{logs / "app.json"}:2: no timestamp: {{"msg": "no time"}}' in capsys.readouterr().err
+    assert f'{logs / "app.json"}:2: no "timestamp" key: {{"msg": "no time"}}' in capsys.readouterr().err
 
 
 def test_error_in_one_file_does_not_stop_the_run(make_logs, run_logreach, capsys):
@@ -187,6 +187,24 @@ def test_unreadable_file_is_reported(make_logs, run_logreach, capsys):
     assert 'Permission denied' in capsys.readouterr().err
 
 
+def test_types_file_skips_blank_lines(make_logs, tmp_path, run_logreach, capsys):
+    logs = make_logs({'syslog': SYSLOG})
+    entry = json.dumps({'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'Europe/Vienna'})
+    (tmp_path / 'logtypes.json').write_text(f'\n{entry}\n\n')
+    _, exit_code = run_logreach(logs, '--check')
+    assert exit_code == 0
+    assert capsys.readouterr().out == f'{logs / "syslog"}: syslog (Europe/Vienna)\n'
+
+
+@pytest.mark.parametrize('line', ['{"logfile_path": "x",', '{"type": "syslog"}', '["x"]'])
+def test_broken_line_in_types_file_is_a_usage_error(tmp_path, run_logreach, capsys, line):
+    types = tmp_path / 'logtypes.json'
+    types.write_text('{"logfile_path": "a", "type": "syslog"}\n\n' + line + '\n')
+    _, exit_code = run_logreach(tmp_path)
+    assert exit_code == 2
+    assert f'logreach: {types}:3: no JSON object with "logfile_path": {line}' in capsys.readouterr().err
+
+
 def test_unknown_timezone_in_types_file_is_reported(make_logs, types_file, run_logreach, capsys):
     logs = make_logs({'syslog': SYSLOG_1408})
     types_file({'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'SomePlace/SomeCity'})
@@ -196,13 +214,20 @@ def test_unknown_timezone_in_types_file_is_reported(make_logs, types_file, run_l
     assert 'Unknown timezone in' in capsys.readouterr().err
 
 
+def test_report_shortens_long_lines(make_logs, run_logreach, capsys):
+    long_line = 'x' * 300
+    logs = make_logs({'syslog': SYSLOG + long_line + '\n'})
+    run_logreach(logs)
+    assert f'{logs / "syslog"}:3: no timestamp: {"x" * 200}…\n' in capsys.readouterr().err
+
+
 def test_require_timestamp_stops_at_first_line_without_timestamp(make_logs, run_logreach, capsys):
     lines = SYSLOG.splitlines(keepends=True)
     logs = make_logs({'syslog': lines[0] + 'no timestamp\n' + lines[1]})
     printed, exit_code = run_logreach(logs, '--require-timestamp')
     assert [line.lineno for line in printed] == [1]
     assert exit_code == 1
-    assert f'{logs / "syslog"}: Timestamp not found in line 2' in capsys.readouterr().err
+    assert f'{logs / "syslog"}: line 2: no timestamp' in capsys.readouterr().err
 
 
 def test_lists_only_max_problems_and_counts_the_rest(make_logs, run_logreach, capsys):

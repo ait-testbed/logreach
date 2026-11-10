@@ -53,7 +53,7 @@ def test_logfile_skips_lines_outside_window_and_without_timestamp(tmp_path, read
                             end=datetime(2026, 9, 1, 14, 45))
     lines, logfile = read_logfile(config)
     assert [line.lineno for line in lines] == [2, 5]
-    assert logfile.unparsed == [(3, 'no timestamp\n')]
+    assert logfile.unparsed == [(3, 'no timestamp', 'no timestamp\n')]
 
 
 def test_logfile_keeps_only_first_unparsed_lines_but_counts_all(tmp_path, read_logfile):
@@ -63,4 +63,5 @@ def test_logfile_keeps_only_first_unparsed_lines_but_counts_all(tmp_path, read_l
     lines, logfile = read_logfile(config)
     assert len(lines) == 1
     assert logfile.unparsed_count == MAX_KEPT_UNPARSED + 3
-    assert logfile.unparsed == [(lineno, 'no timestamp\n') for lineno in range(2, MAX_KEPT_UNPARSED + 2)]
+    assert logfile.unparsed == [(lineno, 'no timestamp', 'no timestamp\n')
+                                for lineno in range(2, MAX_KEPT_UNPARSED + 2)]

@@ -10,6 +10,11 @@ class DateTimeNotFound(LogreachError):
     allowed."""
 
 
+class NoTimestamp(LogreachError):
+    """Raised by parse_timestamp for a line whose timestamp cannot be read; the
+    message says why."""
+
+
 class LogTypeError(Exception):
     """Raised when no log type fits a logfile, or it is empty."""
 
