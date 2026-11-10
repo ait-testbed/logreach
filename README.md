@@ -36,6 +36,9 @@ logreach gather/logs --begin '2026-09-01 14:00' --grep 'password' --grep 'sudo:.
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
 
+# also ask for the type of each file that is not detected, and save the answers in logtypes.json
+logreach gather/logs --check --interactive
+
 # stop at the first problem instead of listing all problems at the end
 logreach gather/logs --check --fail-fast
 
@@ -60,7 +63,8 @@ run (exit code 1). See `logreach --help` for all options and the
 Both are read from the current directory and created empty if missing:
 
 - `ignore_list.txt`: one regex per line; matching paths are skipped when reading a directory.
-- `logtypes.json`: one JSON object per line that sets the type of a file instead of detecting it:
+- `logtypes.json`: one JSON object per line that sets the type of a file instead of detecting it
+  (`--check --interactive` writes it for you):
 
   ```json
   {"logfile_path": "gather/logs/zm/web_php.log", "type": "syslog", "datetimeregex": "\\A(.+?UTC)"}

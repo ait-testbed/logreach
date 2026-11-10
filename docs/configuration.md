@@ -43,4 +43,6 @@ it from `PATH`.
 | `dayfirst` | no | `true` reads dates like `1/9/2026` as 1 September |
 | `timezone` | no | timezone of timestamps without one in this file, e.g. `Europe/Vienna`; overrides `--timezone` |
 
-`--type` on the command line takes precedence over this file.
+`--type` on the command line takes precedence over this file. `logreach PATH --check --interactive`
+asks for the type of every file that is not detected and appends the answers here (see
+[Usage](usage.md)); if a path is listed twice, the last line wins.
