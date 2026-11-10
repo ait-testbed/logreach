@@ -34,6 +34,15 @@ def create_if_missing(path: str) -> None:
             pass
 
 
+def append_line(path: str, line: str) -> None:
+    """Append line to the file at path, after a newline if the file does not
+    end with one; existing lines stay as they are."""
+    with open(path, 'a+') as file:
+        file.seek(0)
+        text = file.read()
+        file.write(('\n' if text and not text.endswith('\n') else '') + line + '\n')
+
+
 class IgnoreList:
     def __init__(self, ignores_file: str = '', extensions: Iterable[str] = ()):
         self.ignores_file = ignores_file
@@ -51,6 +60,13 @@ class IgnoreList:
                 if not pattern or pattern.startswith('#'):
                     continue
                 self.patterns.append((re.compile(pattern), f'{self.ignores_file} pattern {pattern}'))
+
+    def add(self, pattern: str) -> None:
+        """Ignore paths that match the regex pattern from now on, and save it
+        in the ignores file."""
+        compiled = re.compile(pattern)
+        append_line(self.ignores_file, pattern)
+        self.patterns.append((compiled, f'{self.ignores_file} pattern {pattern}'))
 
     def add_extensions(self, extensions: Iterable[str]) -> None:
         """Ignore paths ending in one of extensions, e.g. '.gz' or 'gz'."""
@@ -82,6 +98,12 @@ class KnownLogfilePaths:
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
+
+    def add(self, entry: dict[str, Any]) -> None:
+        """Save entry in the types file; it replaces an entry for the same path
+        from now on."""
+        append_line(self.types_file, json.dumps(entry))
+        self.data[entry['logfile_path']] = entry
 
     def config_for(self, path: str, allow_empty_timestamp: bool = True, begin: datetime | None = None,
                    end: datetime | None = None, dayfirst: bool = False,
@@ -115,6 +137,10 @@ class Analyzer:
     @property
     def ignores(self) -> IgnoreList:
         return self._ignores
+
+    @property
+    def types(self) -> KnownLogfilePaths | None:
+        return self._types
 
     def _try_logtype(self, path: str, logtype: LogType, allow_empty_timestamp: bool = True) -> str | None:
         """Can this file be read as logtype?
