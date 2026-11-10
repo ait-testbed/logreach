@@ -118,4 +118,14 @@ class JsonLogConfig(LogConfig):
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
                 f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
-        return parse(record[self.datetime_key], default=self.default_datetime, dayfirst=self.dayfirst)
+        value = record[self.datetime_key]
+        # anything that is no date gets reported like a line without timestamp, instead of ending the run
+        try:
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                # shortcut: seconds only; epochs in milliseconds are out of range and count as no timestamp
+                return datetime.fromtimestamp(value, timezone.utc)
+            if isinstance(value, str):
+                return parse(value, default=self.default_datetime, dayfirst=self.dayfirst)
+        except (ParserError, ValueError, OverflowError, OSError):
+            pass
+        return None
