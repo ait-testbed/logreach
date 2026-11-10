@@ -80,8 +80,9 @@ def ask_timezone(console: Console) -> str | None:
 
 
 def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> Answer:
-    """Show the start of path and ask for its type until the answer reads
-    timestamps, then save it in the types file.
+    """Show the start of path and ask whether to edit, ignore or skip it; edit
+    asks for its type until the answer reads timestamps, then saves it in the
+    types file.
 
     Returns what was done with the file.
     """
@@ -94,19 +95,18 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
         for lineno, line in enumerate(islice(logfile, SAMPLE_LINES), 1):
             console.print(f'  {lineno} | {line.rstrip()}')
 
-    choices = [logtype.value for logtype in LogType]
-    if analyzer.ignores.ignores_file:
-        choices.append('ignore')
+    actions = ['edit', 'ignore', 'skip'] if analyzer.ignores.ignores_file else ['edit', 'skip']
     try:
         while True:
-            choice = Prompt.ask('Log type', choices=[*choices, 'skip'], default='skip', console=console)
-            if choice == 'skip':
+            action = Prompt.ask('What to do with this file', choices=actions, default='skip', console=console)
+            if action == 'skip':
                 return Answer.SKIPPED
-            if choice == 'ignore':
+            if action == 'ignore':
                 analyzer.ignores.add(re.escape(path) + r'\Z')
                 return Answer.IGNORED
 
-            logtype = LogType(choice)
+            logtype = LogType(Prompt.ask('Log type', choices=[logtype.value for logtype in LogType],
+                                         console=console))
             entry = ask_timestamp_location(path, logtype, console)
             if entry is None:
                 continue

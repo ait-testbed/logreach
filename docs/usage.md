@@ -25,6 +25,9 @@ logreach gather/logs --begin '2026-09-01 14:00' --grep 'password' --grep 'sudo:.
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
 
+# also ask for the type of each file that is not detected, and save the answers
+logreach gather/logs --check --interactive
+
 # set the type instead of detecting it
 logreach audit.log --type audit
 logreach app.json --type json --datetimekey time
@@ -84,6 +87,26 @@ gather/logs/docker/empty.log: skipped (empty)
 ```
 
 Skipped files are no problems. Without `--check` they are skipped without output.
+
+## Teaching logreach new files: `--check --interactive`
+
+Run this first on a new directory. For every file whose type is not detected, `--interactive`
+(`-i`) shows its first lines and asks what to do with it:
+
+* `skip` leaves it undetermined, so it is reported as a problem 
+* `ignore` adds the file's path to [`ignore_list.txt`](configuration.md).
+* `edit` asks for the log type and what it needs:
+    * `syslog`, `audit`, `access`: Enter keeps the type's default regex; a custom regex needs a
+      group `(...)` around the timestamp.
+    * `json`: pick the key of the timestamp from the keys of the first line.
+    * If the timestamps have no timezone, you are asked for one; 
+
+Before saving, logreach shows the first parsed timestamps. If the answer reads no timestamp, or
+you answer `n`, it asks again whether to edit, ignore or skip the file. Saved answers go into
+[`logtypes.json`](configuration.md) with the path exactly as shown. To change an answer, edit or delete its line in
+`logtypes.json`; `dayfirst` can be added this way if necessary.
+
+`--interactive` only works together with `--check` and in a terminal; (Ctrl-D) skips the remaining questions.
 
 ## Problems and exit codes
 

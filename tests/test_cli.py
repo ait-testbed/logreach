@@ -325,10 +325,12 @@ def answers(monkeypatch):
 
 
 @pytest.mark.parametrize('name, content, typed, shown, saved', [
-    pytest.param('web_php.log', WEB_PHP, ('syslog', r'\A(.+?UTC)', 'y'), r'custom regex \A(.+?UTC) (UTC)',
+    pytest.param('web_php.log', WEB_PHP,
+                 ('edit', 'syslog', r'\A(.+?UTC)', 'y'),
+                 r'custom regex \A(.+?UTC) (UTC)',
                  {'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'}, id='regex'),
     pytest.param('app.json', JSON_UNKNOWN_KEY,
-                 ('json', 'when', 'Place/City', 'Europe/Vienna', 'y'),  # unknown timezone: asked again
+                 ('edit', 'json', 'when', 'Place/City', 'Europe/Vienna', 'y'),  # unknown timezone: ask again
                  'json (when, Europe/Vienna)',
                  {'type': 'json', 'datetimekey': 'when', 'timezone': 'Europe/Vienna'}, id='json-timezone'),
 ])
@@ -344,12 +346,12 @@ def test_interactive_saves_answer_and_uses_it(make_logs, run_logreach, answers, 
 
 def test_interactive_asks_again_until_the_answer_reads_timestamps(make_logs, run_logreach, answers, tmp_path):
     logs = make_logs({'web_php.log': WEB_PHP})
-    answers('syslog', 'a(',  # invalid regex
-            'syslog', r'\A.+UTC',  # no group
-            'json',  # not json
-            'syslog', r'\A(nomatch)',  # no timestamp found
-            'syslog', r'\A(.+?UTC)', 'n',  # not saved
-            'syslog', r'\A(.+?UTC)', 'y')
+    answers('edit', 'syslog', 'a(',  # invalid regex
+            'edit', 'syslog', r'\A.+UTC',  # no group
+            'edit', 'json',  # not json
+            'edit', 'syslog', r'\A(nomatch)',  # no timestamp found
+            'edit', 'syslog', r'\A(.+?UTC)', 'n',  # not saved
+            'edit', 'syslog', r'\A(.+?UTC)', 'y')
     _, exit_code = run_logreach(logs, '--check', '-i')
     assert exit_code == 0
     assert len((tmp_path / 'logtypes.json').read_text().splitlines()) == 1
