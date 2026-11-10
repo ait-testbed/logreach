@@ -8,8 +8,6 @@ from typing import Pattern
 
 from dateutil.parser import ParserError, parse
 
-from logreach.exceptions import DateTimeKeyNotFound
-
 
 class LogType(Enum):
     SYSLOG = 'syslog'
@@ -115,11 +113,10 @@ class JsonLogConfig(LogConfig):
             record = json.loads(logline)
         except json.JSONDecodeError:
             return None  # maybe line cut off mid-write, gets reported like a line without timestamp
-        if self.datetime_key not in record:
-            raise DateTimeKeyNotFound(
-                f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
+        # no key or anything that is no date: reported like a line without timestamp, reading goes on
+        if not isinstance(record, dict) or self.datetime_key not in record:
+            return None
         value = record[self.datetime_key]
-        # anything that is no date gets reported like a line without timestamp, instead of ending the run
         try:
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 # shortcut: seconds only; epochs in milliseconds are out of range and count as no timestamp

@@ -6,7 +6,7 @@ from datetime import datetime, tzinfo
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from logreach.exceptions import DateTimeKeyNotFound, DateTimeNotFound, LogreachError, LogTypeError
+from logreach.exceptions import DateTimeNotFound, LogreachError, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 
@@ -185,7 +185,7 @@ class Analyzer:
             try:
                 # without the time window: a file with no line inside it still has a type
                 datetime_key = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-            except (LogTypeError, DateTimeKeyNotFound, DateTimeNotFound):
+            except (LogTypeError, DateTimeNotFound):
                 continue  # try matching the next LogType
             return config_factory(path, logtype, allow_empty_timestamp=allow_empty_timestamp,
                                   datetime_key=datetime_key, begin=begin, end=end, dayfirst=dayfirst,

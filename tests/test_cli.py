@@ -154,14 +154,25 @@ def test_reports_lines_without_timestamp_at_the_end(make_logs, run_logreach, cap
     assert f'{logs / "syslog"}:3: no timestamp: [info] no timestamp here' in capsys.readouterr().err
 
 
-def test_error_in_one_file_does_not_stop_the_run(make_logs, run_logreach, capsys):
-    logs = make_logs({'syslog': SYSLOG,
-                      'app.json': '{"time": "2026-09-01T13:25:40"}\n{"msg": "no time"}\n'})
+def test_json_line_without_key_is_reported_and_reading_goes_on(make_logs, run_logreach, capsys):
+    logs = make_logs({'app.json': EVE_JSON + '{"msg": "no time"}\n' + EVE_JSON})
     printed, exit_code = run_logreach(logs)
-    assert [line.filename for line in printed].count(str(logs / 'syslog')) == 2
+    assert [line.lineno for line in printed] == [1, 3]
+    assert exit_code == 1
+    assert f'{logs / "app.json"}:2: no timestamp: {{"msg": "no time"}}' in capsys.readouterr().err
+
+
+def test_error_in_one_file_does_not_stop_the_run(make_logs, run_logreach, capsys):
+    logs = make_logs({'syslog': SYSLOG, 'locked.log': SYSLOG})
+    (logs / 'locked.log').chmod(0)
+    try:
+        printed, exit_code = run_logreach(logs)
+    finally:
+        (logs / 'locked.log').chmod(0o644)
+    assert {line.filename for line in printed} == {str(logs / 'syslog')}
     assert exit_code == 1
     err = capsys.readouterr().err
-    assert f'{logs / "app.json"}: Unable to find timestamp-key "time"' in err
+    assert f'{logs / "locked.log"}: [Errno 13] Permission denied' in err
     assert '1 files with errors' in err
 
 

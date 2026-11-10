@@ -1,5 +1,6 @@
+import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -71,3 +72,22 @@ def test_dayfirst_decides_ambiguous_dates(line, dayfirst, expected):
 def test_dayfirst_json():
     config = config_factory('app.json', LogType.JSON, datetime_key='time', dayfirst=True)
     assert config.parse_timestamp('{"time": "1/9/2026 13:25:40"}') == datetime(2026, 9, 1, 13, 25, 40)
+
+
+@pytest.mark.parametrize('value, expected', [
+    pytest.param(1756735200, datetime(2025, 9, 1, 14, 0, tzinfo=UTC), id='epoch-seconds'),
+    pytest.param(1756735200.5, datetime(2025, 9, 1, 14, 0, 0, 500000, tzinfo=UTC), id='epoch-float'),
+    pytest.param(1756735200123, None, id='epoch-milliseconds'),
+    pytest.param('not a date', None, id='no-date'),
+    pytest.param(True, None, id='bool'),
+    pytest.param(None, None, id='null'),
+])
+def test_json_timestamp_values(value, expected):
+    config = config_factory('app.json', LogType.JSON, datetime_key='time')
+    assert config.parse_timestamp(json.dumps({'time': value})) == expected
+
+
+@pytest.mark.parametrize('line', ['{"msg": "no time"}', '"no object"', '[1, 2]'])
+def test_json_line_without_timestamp_key(line):
+    config = config_factory('app.json', LogType.JSON, datetime_key='time')
+    assert config.parse_timestamp(line) is None
