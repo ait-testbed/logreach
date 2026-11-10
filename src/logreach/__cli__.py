@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.exceptions import FILE_ERRORS, LogTypeError
+from logreach.exceptions import FILE_ERRORS, LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
@@ -250,8 +250,12 @@ def main() -> None:
     logger = setup_logger()
     ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
                           if extension.strip()]
-    analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
-                        ignored_extensions=ignored_extensions)
+    try:
+        analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
+                            ignored_extensions=ignored_extensions)
+    except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
+        sys.stderr.write(f'logreach: {e}\n')
+        sys.exit(2)
     problems = Problems()
 
     try:

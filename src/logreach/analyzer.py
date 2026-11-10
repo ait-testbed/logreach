@@ -91,10 +91,18 @@ class KnownLogfilePaths:
         self._read_file()
 
     def _read_file(self) -> None:
+        """Read one entry per line; blank lines are skipped, broken ones raise
+        LogreachError."""
         with open(self.types_file, 'r') as list_file:
-            for line in list_file:
-                item = json.loads(line)
-                self.data[item['logfile_path']] = item
+            for lineno, line in enumerate(list_file, 1):
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                    self.data[item['logfile_path']] = item
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    raise LogreachError(f'{self.types_file}:{lineno}: no JSON object with "logfile_path": '
+                                        f'{line.strip()}')
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
