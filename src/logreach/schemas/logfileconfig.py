@@ -111,7 +111,10 @@ class JsonLogConfig(LogConfig):
         return f'json ({self.datetime_key}, {self.timezone_name})'
 
     def parse_timestamp(self, logline: str) -> datetime | None:
-        record = json.loads(logline)
+        try:
+            record = json.loads(logline)
+        except json.JSONDecodeError:
+            return None  # maybe line cut off mid-write, gets reported like a line without timestamp
         if self.datetime_key not in record:
             raise DateTimeKeyNotFound(
                 f'Unable to find timestamp-key "{self.datetime_key}" in json-string: {record}')
