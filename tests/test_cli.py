@@ -1,3 +1,7 @@
+import io
+import json
+import re
+import sys
 from datetime import UTC, datetime
 
 import pytest
@@ -174,7 +178,7 @@ def test_unreadable_file_is_reported(make_logs, run_logreach, capsys):
 
 def test_unknown_timezone_in_types_file_is_reported(make_logs, types_file, run_logreach, capsys):
     logs = make_logs({'syslog': SYSLOG_1408})
-    types_file({'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'Mars/Olympus'})
+    types_file({'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'SomePlace/SomeCity'})
     printed, exit_code = run_logreach(logs)
     assert printed == []
     assert exit_code == 1
@@ -297,6 +301,77 @@ def test_invalid_grep_regex_is_a_usage_error(run_logreach, tmp_path, capsys):
 
 
 def test_unknown_timezone_is_a_usage_error(run_logreach, tmp_path, capsys):
-    _, exit_code = run_logreach(tmp_path, '--timezone', 'Mars/Olympus')
+    _, exit_code = run_logreach(tmp_path, '--timezone', 'SomePlace/SomeCity')
     assert exit_code == 2
-    assert 'unknown timezone: Mars/Olympus' in capsys.readouterr().err
+    assert 'unknown timezone: SomePlace/SomeCity' in capsys.readouterr().err
+
+
+# --- --check --interactive
+
+WEB_PHP = '9/1/26, 1:25:44 PM UTC.519574 web_php[1170].INF [Login successful]\n'  # not detected
+JSON_UNKNOWN_KEY = '{"when": "2026-09-01 14:00", "msg": "x"}\n'  # no known key, no seconds for syslog
+
+
+@pytest.fixture
+def answers(monkeypatch):
+    """Calling answers(*lines) types the lines into the prompts of a terminal;
+    after the last line, input is closed."""
+
+    def type_in(*lines: str) -> None:
+        stdin = io.StringIO(''.join(line + '\n' for line in lines))
+        stdin.isatty = lambda: True
+        monkeypatch.setattr(sys, 'stdin', stdin)
+    return type_in
+
+
+@pytest.mark.parametrize('name, content, typed, shown, saved', [
+    pytest.param('web_php.log', WEB_PHP, ('syslog', r'\A(.+?UTC)', 'y'), r'custom regex \A(.+?UTC) (UTC)',
+                 {'type': 'syslog', 'datetimeregex': r'\A(.+?UTC)'}, id='regex'),
+    pytest.param('app.json', JSON_UNKNOWN_KEY,
+                 ('json', 'when', 'Place/City', 'Europe/Vienna', 'y'),  # unknown timezone: asked again
+                 'json (when, Europe/Vienna)',
+                 {'type': 'json', 'datetimekey': 'when', 'timezone': 'Europe/Vienna'}, id='json-timezone'),
+])
+def test_interactive_saves_answer_and_uses_it(make_logs, run_logreach, answers, tmp_path, capsys,
+                                              name, content, typed, shown, saved):
+    path = make_logs({name: content}) / name
+    answers(*typed)
+    _, exit_code = run_logreach(path.parent, '--check', '-i')
+    assert exit_code == 0
+    assert capsys.readouterr().out == f'{path}: {shown}\n'
+    assert json.loads((tmp_path / 'logtypes.json').read_text()) == {'logfile_path': str(path), **saved}
+
+
+def test_interactive_asks_again_until_the_answer_reads_timestamps(make_logs, run_logreach, answers, tmp_path):
+    logs = make_logs({'web_php.log': WEB_PHP})
+    answers('syslog', 'a(',  # invalid regex
+            'syslog', r'\A.+UTC',  # no group
+            'json',  # not json
+            'syslog', r'\A(nomatch)',  # no timestamp found
+            'syslog', r'\A(.+?UTC)', 'n',  # not saved
+            'syslog', r'\A(.+?UTC)', 'y')
+    _, exit_code = run_logreach(logs, '--check', '-i')
+    assert exit_code == 0
+    assert len((tmp_path / 'logtypes.json').read_text().splitlines()) == 1
+
+
+def test_interactive_ignore_adds_path_to_ignore_list(make_logs, ignore_list, run_logreach, answers, capsys):
+    path = make_logs({'web_php.log': WEB_PHP}) / 'web_php.log'
+    ignores = ignore_list('README\\Z')
+    answers('ignore')
+    _, exit_code = run_logreach(path.parent, '--check', '-i')
+    assert exit_code == 0
+    pattern = re.escape(str(path)) + r'\Z'
+    assert capsys.readouterr().out == f'{path}: skipped (ignored: {ignores} pattern {pattern})\n'
+    assert ignores.read_text() == f'README\\Z\n{pattern}\n'
+
+
+@pytest.mark.parametrize('typed', [pytest.param(('skip',), id='skip'), pytest.param((), id='input-closed')])
+def test_interactive_skip_keeps_the_file_undetermined(make_logs, run_logreach, answers, tmp_path, capsys,
+                                                      typed):
+    path = make_logs({'web_php.log': WEB_PHP}) / 'web_php.log'
+    answers(*typed)
+    _, exit_code = run_logreach(path.parent, '--check', '-i')
+    assert exit_code == 1
+    assert f'Unable to determine logtype for: {path}' in capsys.readouterr().err
+    assert (tmp_path / 'logtypes.json').read_text() == ''
