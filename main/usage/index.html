@@ -63,6 +63,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#checking-a-directory-check">Checking a directory: --check</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#teaching-logreach-new-files-check-interactive">Teaching logreach new files: --check --interactive</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#problems-and-exit-codes">Problems and exit codes</a>
     </li>
     </ul>
@@ -128,6 +130,9 @@ logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span 
 <span class="c1"># only show the detected type of each file and the problems found</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check
 
+<span class="c1"># also ask for the type of each file that is not detected, and save the answers</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--interactive
+
 <span class="c1"># set the type instead of detecting it</span>
 logreach<span class="w"> </span>audit.log<span class="w"> </span>--type<span class="w"> </span>audit
 logreach<span class="w"> </span>app.json<span class="w"> </span>--type<span class="w"> </span>json<span class="w"> </span>--datetimekey<span class="w"> </span><span class="nb">time</span>
@@ -171,11 +176,30 @@ gather/logs/inetfw/syslog.1.gz: skipped (ignored: extension .gz)
 gather/logs/docker/empty.log: skipped (empty)
 </code></pre></div>
 <p>Skipped files are no problems. Without <code>--check</code> they are skipped without output.</p>
+<h2 id="teaching-logreach-new-files-check-interactive">Teaching logreach new files: <code>--check --interactive</code></h2>
+<p>Run this first on a new directory. For every file whose type is not detected, <code>--interactive</code>
+(<code>-i</code>) shows its first lines and asks what to do with it:</p>
+<ul>
+<li><code>skip</code> leaves it undetermined, so it is reported as a problem </li>
+<li><code>ignore</code> adds the file's path to <a href="../configuration/"><code>ignore_list.txt</code></a>.</li>
+<li><code>edit</code> asks for the log type and what it needs:<ul>
+<li><code>syslog</code>, <code>audit</code>, <code>access</code>: Enter keeps the type's default regex; a custom regex needs a
+  group <code>(...)</code> around the timestamp.</li>
+<li><code>json</code>: pick the key of the timestamp from the keys of the first line.</li>
+<li>If the timestamps have no timezone, you are asked for one; </li>
+</ul>
+</li>
+</ul>
+<p>Before saving, logreach shows the first parsed timestamps. If the answer reads no timestamp, or
+you answer <code>n</code>, it asks again whether to edit, ignore or skip the file. Saved answers go into
+<a href="../configuration/"><code>logtypes.json</code></a> with the path exactly as shown. To change an answer, edit or delete its line in
+<code>logtypes.json</code>; <code>dayfirst</code> can be added this way if necessary.</p>
+<p><code>--interactive</code> only works together with <code>--check</code> and in a terminal; (Ctrl-D) skips the remaining questions.</p>
 <h2 id="problems-and-exit-codes">Problems and exit codes</h2>
 <p>Logreach does not stop at a problem. It lists them on stderr at the end of the run:</p>
 <ul>
 <li>files where no type fits</li>
-<li>lines without a timestamp</li>
+<li>lines without a timestamp, including JSON lines that are not valid JSON (e.g. cut off mid-write)</li>
 <li>errors while reading a file, e.g. a JSON line without the timestamp key</li>
 </ul>
 <p><code>--max-problems</code> limits how many are listed, <code>--fail-fast</code> stops at the first one, and
