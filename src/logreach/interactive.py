@@ -114,7 +114,8 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
                                     datetime_regex=entry.get('datetimeregex'))
             try:
                 with Logfile(config, logger=logging.getLogger()) as logfile:
-                    lines = list(islice(logfile, PREVIEW_LINES))
+                    lines = list(islice((line for line in logfile if line.timestamp is not None),
+                                        PREVIEW_LINES))
             except FILE_ERRORS as e:
                 console.print(f'Cannot read {path} as {logtype.value}: {e}')
                 continue
