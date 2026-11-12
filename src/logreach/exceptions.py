@@ -15,7 +15,7 @@ class NoTimestamp(LogreachError):
     message says why."""
 
 
-class LogTypeError(Exception):
+class LogTypeError(LogreachError):
     """Raised when no log type fits a logfile, or it is empty."""
 
 
