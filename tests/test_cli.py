@@ -330,6 +330,12 @@ def test_json_without_datetimekey_is_a_usage_error(run_logreach, tmp_path, capsy
     assert '--type json requires --datetimekey' in capsys.readouterr().err
 
 
+def test_invalid_datetimeregex_is_a_usage_error(run_logreach, tmp_path, capsys):
+    _, exit_code = run_logreach(tmp_path, '--type', 'syslog', '--datetimeregex', 'a(')
+    assert exit_code == 2
+    assert "invalid --datetimeregex regex 'a('" in capsys.readouterr().err
+
+
 def test_invalid_grep_regex_is_a_usage_error(run_logreach, tmp_path, capsys):
     _, exit_code = run_logreach(tmp_path, '--grep', 'a(')
     assert exit_code == 2
