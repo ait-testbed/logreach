@@ -3,10 +3,7 @@ import logging
 import os
 import re
 import sys
-from collections.abc import Iterator
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import NoReturn
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.parser import parse
@@ -15,10 +12,10 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.exceptions import FILE_ERRORS, LogreachError, LogTypeError
+from logreach.api import FileEvent, FileStatus, Logreach, Problems
+from logreach.exceptions import LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
-from logreach.logfile import Logfile, config_factory
-from logreach.schemas.logfileconfig import LogConfig, LogType
+from logreach.schemas.logfileconfig import LogType
 from logreach.schemas.logline import Logline
 
 
@@ -62,55 +59,16 @@ def print_logline(logline: Logline) -> None:
 #           f'{logline.raw.rstrip("\r\n")}\n')
 
 
-# characters of a log line shown in the problem report; the line number leads to the rest
-MAX_SHOWN_CHARS = 200
-
-
-def shortened(text: str) -> str:
-    return text if len(text) <= MAX_SHOWN_CHARS else text[:MAX_SHOWN_CHARS] + '…'
-
-
-@dataclass
-class Problems:
-    """Problems collected during the run, reported at the end so a run never
-    stops halfway."""
-
-    messages: list[str] = field(default_factory=list)
-    unparsed_lines: int = 0
-    undetermined_files: int = 0
-    failed_files: int = 0
-
-    def add_unparsed(self, path: str, logfile: Logfile) -> None:
-        """Add the lines of path that had no timestamp: the ones Logfile kept,
-        plus a count of the rest."""
-        self.messages.extend(f'{path}:{lineno}: {reason}: {shortened(line.rstrip())}'
-                             for lineno, reason, line in logfile.unparsed)
-        not_kept = logfile.unparsed_count - len(logfile.unparsed)
-        if not_kept:
-            self.messages.append(f'{path}: ... and {not_kept} more lines without timestamp')
-        self.unparsed_lines += logfile.unparsed_count
-
-    def add_undetermined(self, message: str) -> None:
-        self.messages.append(message)
-        self.undetermined_files += 1
-
-    def add_failed(self, path: str, error: Exception) -> None:
-        self.messages.append(f'{path}: {error}')
-        self.failed_files += 1
-
-    def exit_with_report(self, max_problems: int) -> NoReturn:
-        """List at most max_problems problems on stderr, count the rest, and
-        exit with code 1."""
-        shown = self.messages[:max_problems]
-        report = ['', 'Problems found:', *(f'  {problem}' for problem in shown)]
-        if len(self.messages) > len(shown):
-            report.append(f'  ... and {len(self.messages) - len(shown)} more (see --max-problems)')
-        report.append(f'{self.unparsed_lines} lines without timestamp, '
-                      f'{self.undetermined_files} undetermined files, {self.failed_files} files with errors')
-        sys.stdout.flush()  # so the report comes after all output, even when stdout is redirected
-        # plain stderr instead of rich, which would treat [...] in log lines as markup
-        sys.stderr.write('\n'.join(report) + '\n')
-        sys.exit(1)
+def problem_report(problems: Problems, max_problems: int) -> str:
+    """List at most max_problems problems and count the rest."""
+    shown = problems.messages[:max_problems]
+    report = ['', 'Problems found:', *(f'  {problem}' for problem in shown)]
+    if len(problems.messages) > len(shown):
+        report.append(f'  ... and {len(problems.messages) - len(shown)} more (see --max-problems)')
+    report.append(f'{problems.unparsed_lines} lines without timestamp, '
+                  f'{problems.undetermined_files} undetermined files, '
+                  f'{problems.failed_files} files with errors')
+    return '\n'.join(report) + '\n'
 
 
 def parse_args() -> argparse.Namespace:
@@ -153,10 +111,17 @@ def parse_args() -> argparse.Namespace:
                              'and save the answer in --types-file')
     args = parser.parse_args()
 
+    # also checked by Logreach, here with the flag names
     if args.type == LogType.JSON.value and not args.datetimekey:
         parser.error('--type json requires --datetimekey')
     if (args.datetimekey or args.datetimeregex) and not args.type:
         parser.error('--datetimekey and --datetimeregex require --type')
+    regexes = [('--datetimeregex', args.datetimeregex), *(('--grep', p) for p in args.grep or ())]
+    for option, pattern in regexes:
+        try:
+            re.compile(pattern or '')
+        except re.error as e:
+            parser.error(f'invalid {option} regex {pattern!r}: {e}')
     if not os.path.exists(args.path):
         parser.error(f'{args.path} does not exist')
     if args.interactive:
@@ -166,119 +131,51 @@ def parse_args() -> argparse.Namespace:
             parser.error('--interactive requires a --types-file to save the answers in')
         if not sys.stdin.isatty():
             parser.error('--interactive needs a terminal to ask questions')
-    if args.grep:
-        flags = re.IGNORECASE if args.ignore_case else 0
-        try:
-            args.grep = [re.compile(pattern, flags) for pattern in args.grep]
-        except re.error as e:
-            parser.error(f'invalid --grep regex {e.pattern!r}: {e}')
-        if args.check:
-            sys.stderr.write('--grep is ignored with --check\n')
-    # --begin / --end without timezone are meant in --timezone, for every file
-    if args.begin and args.begin.tzinfo is None:
-        args.begin = args.begin.replace(tzinfo=args.timezone)
-    if args.end and args.end.tzinfo is None:
-        args.end = args.end.replace(tzinfo=args.timezone)
+    if args.grep and args.check:
+        sys.stderr.write('--grep is ignored with --check\n')
     return args
 
 
-def iter_logfiles(path: str, analyzer: Analyzer) -> Iterator[tuple[str, str | None]]:
-    """Yield (file, why it is ignored or None): path itself if it is a file,
-    else every file below it."""
-    if not os.path.isdir(path):
-        yield path, None  # named explicitly, so the ignore list does not apply
-        return
-    for root, _dirs, files in os.walk(path, followlinks=True):
-        for file in files:
-            filepath = os.path.join(root, file)
-            yield filepath, analyzer.ignores.ignore_reason(filepath)
-
-
-def make_config(path: str, args: argparse.Namespace, analyzer: Analyzer) -> LogConfig:
-    """Build the config from --type, else from the types file or detection.
-
-    Raises LogTypeError if no log type fits.
-    """
-    allow_empty_timestamp = not args.require_timestamp
-    if args.type:
-        return config_factory(path, LogType(args.type), allow_empty_timestamp=allow_empty_timestamp,
-                              datetime_key=args.datetimekey, datetime_regex=args.datetimeregex,
-                              begin=args.begin, end=args.end, dayfirst=args.dayfirst, timezone=args.timezone)
-    return analyzer.detect_config(path, allow_empty_timestamp=allow_empty_timestamp, begin=args.begin,
-                                  end=args.end, dayfirst=args.dayfirst, timezone=args.timezone)
-
-
-def process_file(path: str, ignored: str | None, args: argparse.Namespace, analyzer: Analyzer,
-                 logger: logging.Logger, problems: Problems) -> None:
-    """Print the lines of one logfile (or only its type with --check) and
-    collect its problems.
-
-    Ignored and empty files are skipped; --check shows why.
-    """
-    skip_reason = None
-    if ignored:
-        skip_reason = f'ignored: {ignored}'
-    elif os.path.getsize(path) == 0:
-        skip_reason = 'empty'
-    if skip_reason:
-        if args.check:
-            sys.stdout.write(f'{path}: skipped ({skip_reason})\n')
-        return  # skipped files are no problems
-
-    try:
-        config = make_config(path, args, analyzer)
-    except LogTypeError as e:
-        answer = ask_and_save_logtype(path, e, analyzer) if args.interactive else Answer.SKIPPED
-        if answer == Answer.SKIPPED:
-            problems.add_undetermined(str(e))
-            return
-        if answer == Answer.IGNORED:
-            return process_file(path, analyzer.ignores.ignore_reason(path), args, analyzer, logger, problems)
-        config = make_config(path, args, analyzer)  # now from the types file
-
-    if args.check:
-        # plain stdout instead of rich, which would wrap long paths
-        sys.stdout.write(f'{path}: {config.describe()}\n')
-    with Logfile(config, logger=logger) as logfile:
-        try:
-            for line in logfile:
-                # checked before printing: reading this line may have skipped one without timestamp
-                if args.fail_fast and logfile.unparsed_count:
-                    break
-                if args.grep and not any(pattern.search(line.raw) for pattern in args.grep):
-                    continue
-                if not args.check:
-                    print_logline(line)
-        finally:
-            problems.add_unparsed(path, logfile)
+def ask_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> bool:
+    """--interactive: True if the answer was saved, so the file is looked at again."""
+    return bool(ask_and_save_logtype(path, error, analyzer) != Answer.SKIPPED)
 
 
 def main() -> None:
     args = parse_args()
-    logger = setup_logger()
+    setup_logger()
     ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
                           if extension.strip()]
     try:
-        analyzer = Analyzer(types_file=args.types_file, ignores_file=args.ignorelist_file,
-                            ignored_extensions=ignored_extensions)
+        logreach = Logreach(logtype=args.type, datetime_key=args.datetimekey,
+                            datetime_regex=args.datetimeregex, dayfirst=args.dayfirst,
+                            timezone=args.timezone, begin=args.begin, end=args.end, grep=args.grep or (),
+                            ignore_case=args.ignore_case, require_timestamp=args.require_timestamp,
+                            fail_fast=args.fail_fast, types_file=args.types_file,
+                            ignores_file=args.ignorelist_file, ignored_extensions=ignored_extensions,
+                            on_undetermined=ask_logtype if args.interactive else None)
     except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
         sys.stderr.write(f'logreach: {e}\n')
         sys.exit(2)
-    problems = Problems()
 
     try:
-        for path, ignored in iter_logfiles(args.path, analyzer):
-            try:
-                process_file(path, ignored, args, analyzer, logger, problems)
-            except FILE_ERRORS as e:
-                problems.add_failed(path, e)
-            if args.fail_fast and problems.messages:
-                break
+        for item in logreach.read(args.path):
+            if isinstance(item, FileEvent):
+                # plain stdout instead of rich, which would wrap long paths
+                if args.check and item.status == FileStatus.READ:
+                    sys.stdout.write(f'{item.path}: {item.message}\n')
+                elif args.check and item.status == FileStatus.SKIPPED:
+                    sys.stdout.write(f'{item.path}: skipped ({item.message})\n')
+            elif not args.check and item.timestamp is not None:  # lines without timestamp are reported
+                print_logline(item)
     except KeyboardInterrupt:
         sys.exit(1)
 
-    if problems.messages:
-        problems.exit_with_report(args.max_problems)
+    if logreach.problems.messages:
+        sys.stdout.flush()  # so the report comes after all output, even when stdout is redirected
+        # plain stderr instead of rich, which would treat [...] in log lines as markup
+        sys.stderr.write(problem_report(logreach.problems, args.max_problems))
+        sys.exit(1)
 
 
 if __name__ == '__main__':
