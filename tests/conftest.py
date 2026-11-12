@@ -1,7 +1,6 @@
 """Fixtures shared by the tests: files in tmp_path and running the CLI."""
 
 import json
-import logging
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -10,8 +9,6 @@ from typing import Any
 import pytest
 
 import logreach.__cli__ as cli
-from logreach.logfile import Logfile
-from logreach.schemas.logfileconfig import LogConfig
 from logreach.schemas.logline import Logline
 
 
@@ -54,18 +51,6 @@ def ignore_list(tmp_path: Path) -> Callable[..., Path]:
         path.write_text(''.join(line + '\n' for line in lines))
         return path
     return write
-
-
-@pytest.fixture
-def read_logfile() -> Callable[[LogConfig], tuple[list[Logline], Logfile]]:
-    """read_logfile(config) returns the lines Logfile yields for config, and
-    the closed Logfile for its unparsed lines."""
-
-    def read(config: LogConfig) -> tuple[list[Logline], Logfile]:
-        with Logfile(config, logger=logging.getLogger()) as logfile:
-            lines = list(logfile)
-        return lines, logfile
-    return read
 
 
 @pytest.fixture
