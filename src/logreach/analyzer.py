@@ -164,7 +164,7 @@ class Analyzer:
                                     allow_empty_timestamp=allow_empty_timestamp)
             # get back first line that parses as logtype
             with Logfile(config, logger=logging.getLogger()) as lf:
-                first_line = next(lf, None)
+                first_line = next((line for line in lf if line.timestamp is not None), None)
         except UnicodeDecodeError:
             raise LogTypeError(f'Unsupported filetype: {path}')
         except json.decoder.JSONDecodeError:
