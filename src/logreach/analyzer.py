@@ -16,12 +16,15 @@ JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts'
 DETECTION_ORDER = (LogType.JSON, LogType.AUDIT, LogType.ACCESS, LogType.SYSLOG)
 DEFAULT_TYPES_FILE = 'logtypes.json'
 DEFAULT_IGNORES_FILE = 'ignore_list.txt'
+# characters of the first line parsed as JSON: a file that is one huge line (e.g. a JSON array export)
+# would else be loaded whole; a longer line is cut off, is no valid JSON and so no json type
+MAX_FIRST_LINE_CHARS = 1_000_000
 
 
 def json_timestamp_key(path: str) -> str | None:
     """Return the first known timestamp key in the file's first line."""
     with open(path, 'r') as logfile:
-        record = json.loads(logfile.readline())
+        record = json.loads(logfile.readline(MAX_FIRST_LINE_CHARS))
     if not isinstance(record, dict):
         return None
     return next((key for key in JSON_TIMESTAMP_KEYS if key in record), None)

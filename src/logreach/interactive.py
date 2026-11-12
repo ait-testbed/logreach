@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from rich.text import Text
 
-from logreach.analyzer import Analyzer
+from logreach.analyzer import MAX_FIRST_LINE_CHARS, Analyzer
 from logreach.exceptions import FILE_ERRORS, LogTypeError
 from logreach.logfile import DEFAULT_TIMESTAMP_REGEX, Logfile, config_factory
 from logreach.schemas.logfileconfig import LogType
@@ -39,7 +39,7 @@ def ask_timestamp_location(path: str, logtype: LogType, console: Console) -> dic
     if logtype == LogType.JSON:
         try:
             with open(path) as logfile:
-                record = json.loads(logfile.readline())
+                record = json.loads(logfile.readline(MAX_FIRST_LINE_CHARS))
         except (json.JSONDecodeError, UnicodeDecodeError):
             console.print('The first line is no JSON object.')
             return None
