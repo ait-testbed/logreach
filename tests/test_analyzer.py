@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
@@ -6,7 +7,7 @@ import pytest
 
 import logreach.analyzer
 from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths, json_timestamp_key
-from logreach.exceptions import LogTypeError
+from logreach.exceptions import LogreachError, LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
 from samples import ACCESS, AUDIT, EVE_JSON, JSON_TIME, SYSLOG
 
@@ -135,6 +136,18 @@ def test_ignore_list_ignores_extensions(path, reason):
 
 
 def test_known_logfile_paths_contains_listed_paths(types_file):
-    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json'})))
+    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json',
+                                              'datetimekey': 'timestamp'})))
     assert '/var/log/suricata/eve.json' in known
     assert '/var/log/syslog' not in known
+
+
+@pytest.mark.parametrize('entry, message', [
+    ({'type': 'json'}, 'datetimekey'),
+    ({'type': 'nginx'}, 'nginx'),
+    ({'type': 'syslog', 'datetimeregex': '(unclosed'}, 'missing'),
+    ({'type': 'syslog', 'timezone': 'Mars/Base'}, 'Mars/Base'),
+])
+def test_known_logfile_paths_rejects_broken_entries(types_file, entry, message):
+    with pytest.raises(LogreachError, match=rf':1: .*{re.escape(message)}'):
+        KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/x.log', **entry})))

@@ -32,7 +32,7 @@ def test_config_factory_regex(logtype):
 
 def test_config_factory_json():
     assert config_factory('x', LogType.JSON, datetime_key='ts').datetime_key == 'ts'
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         config_factory('x', LogType.JSON)
 
 

@@ -95,7 +95,7 @@ class KnownLogfilePaths:
 
     def _read_file(self) -> None:
         """Read one entry per line; blank lines are skipped, broken ones raise
-        LogreachError."""
+        LogreachError, so a bad entry stops the run before reading."""
         with open(self.types_file, 'r') as list_file:
             for lineno, line in enumerate(list_file, 1):
                 if not line.strip():
@@ -106,6 +106,10 @@ class KnownLogfilePaths:
                 except (json.JSONDecodeError, TypeError, KeyError):
                     raise LogreachError(f'{self.types_file}:{lineno}: no JSON object with "logfile_path": '
                                         f'{line.strip()}')
+                try:
+                    self.config_for(item['logfile_path'])
+                except (ValueError, re.error, LogreachError) as e:
+                    raise LogreachError(f'{self.types_file}:{lineno}: {e}')
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
@@ -128,7 +132,7 @@ class KnownLogfilePaths:
             try:
                 timezone = ZoneInfo(entry['timezone'])
             except (ZoneInfoNotFoundError, ValueError):
-                raise LogreachError(f'Unknown timezone in {self.types_file}: {entry["timezone"]}')
+                raise LogreachError(f'unknown timezone {entry["timezone"]!r}')
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
                               datetime_regex=entry.get('datetimeregex'),

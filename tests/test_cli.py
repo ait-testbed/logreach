@@ -210,8 +210,8 @@ def test_unknown_timezone_in_types_file_is_reported(make_logs, types_file, run_l
     types_file({'logfile_path': str(logs / 'syslog'), 'type': 'syslog', 'timezone': 'SomePlace/SomeCity'})
     printed, exit_code = run_logreach(logs)
     assert printed == []
-    assert exit_code == 1
-    assert 'Unknown timezone in' in capsys.readouterr().err
+    assert exit_code == 2
+    assert "logtypes.json:1: unknown timezone 'SomePlace/SomeCity'" in capsys.readouterr().err
 
 
 def test_report_shortens_long_lines(make_logs, run_logreach, capsys):

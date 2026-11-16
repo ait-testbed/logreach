@@ -28,7 +28,7 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     logfile.
 
     For json: the timestamp is read from the field datetime_key, which is
-    required (TypeError otherwise).
+    required (ValueError otherwise).
     For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
     dayfirst reads ambiguous dates like 1/9/2026 as day/month.
@@ -36,7 +36,7 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     """
     if logtype == LogType.JSON:
         if not datetime_key:
-            raise TypeError('json-type needs a datetime_key to identify the timestamp')
+            raise ValueError('type json needs a datetimekey for the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
                              dayfirst=dayfirst, timezone=timezone)
