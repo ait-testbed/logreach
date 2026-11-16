@@ -116,8 +116,9 @@ Logreach does not stop at a problem. It lists them on stderr at the end of the r
 * lines without a timestamp, including JSON lines that are not valid JSON (e.g. cut off mid-write)
 * errors while reading a file, e.g. a JSON line without the timestamp key
 
-`--max-problems` limits how many are listed, `--fail-fast` stops at the first one, and
-`--require-timestamp` treats a line without a timestamp as an error.
+`--max-problems` limits how many are listed, `-q` / `--quiet` lists none (the exit code still
+shows them), `--fail-fast` stops at the first one, and `--require-timestamp` treats a line without a
+timestamp as an error.
 
 | Exit code | Meaning |
 |---|---|

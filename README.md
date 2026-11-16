@@ -39,6 +39,9 @@ logreach gather/logs --check
 # also ask for the type of each file that is not detected, and save the answers in logtypes.json
 logreach gather/logs --check --interactive
 
+# do not list the problems at the end; the exit code is still 1 if there are any
+logreach gather/logs --quiet
+
 # stop at the first problem instead of listing all problems at the end
 logreach gather/logs --check --fail-fast
 

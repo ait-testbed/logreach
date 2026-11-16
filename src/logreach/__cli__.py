@@ -102,6 +102,8 @@ def parse_args() -> argparse.Namespace:
                         help='treat a line without a timestamp as an error that stops reading the file')
     parser.add_argument('--max-problems', type=int, default=50,
                         help='problems listed at the end of the run; the rest are only counted')
+    parser.add_argument('-q', '--quiet', action='store_true',
+                        help='do not list the problems at the end; the exit code still shows them')
     parser.add_argument('--fail-fast', action='store_true',
                         help='stop at the first problem instead of reporting all problems at the end')
     parser.add_argument('--check', action='store_true',
@@ -125,13 +127,15 @@ def parse_args() -> argparse.Namespace:
     if not os.path.exists(args.path):
         parser.error(f'{args.path} does not exist')
     if args.interactive:
+        if args.quiet:
+            parser.error('--interactive cannot be combined with --quiet')
         if not args.check:
             parser.error('--interactive requires --check')
         if not args.types_file:
             parser.error('--interactive requires a --types-file to save the answers in')
         if not sys.stdin.isatty():
             parser.error('--interactive needs a terminal to ask questions')
-    if args.grep and args.check:
+    if args.grep and args.check and not args.quiet:
         sys.stderr.write('--grep is ignored with --check\n')
     return args
 
@@ -172,9 +176,10 @@ def main() -> None:
         sys.exit(1)
 
     if logreach.problems.messages:
-        sys.stdout.flush()  # so the report comes after all output, even when stdout is redirected
-        # plain stderr instead of rich, which would treat [...] in log lines as markup
-        sys.stderr.write(problem_report(logreach.problems, args.max_problems))
+        if not args.quiet:
+            sys.stdout.flush()  # so the report comes after all output, even when stdout is redirected
+            # plain stderr instead of rich, which would treat [...] in log lines as markup
+            sys.stderr.write(problem_report(logreach.problems, args.max_problems))
         sys.exit(1)
 
 
