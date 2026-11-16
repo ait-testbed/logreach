@@ -1,7 +1,6 @@
 """Fixtures shared by the tests: files in tmp_path and running the CLI."""
 
 import json
-import logging
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -9,9 +8,7 @@ from typing import Any
 
 import pytest
 
-import logreach.__cli__ as cli
-from logreach.logfile import Logfile
-from logreach.schemas.logfileconfig import LogConfig
+import logreach.__main__ as cli
 from logreach.schemas.logline import Logline
 
 
@@ -57,18 +54,6 @@ def ignore_list(tmp_path: Path) -> Callable[..., Path]:
 
 
 @pytest.fixture
-def read_logfile() -> Callable[[LogConfig], tuple[list[Logline], Logfile]]:
-    """read_logfile(config) returns the lines Logfile yields for config, and
-    the closed Logfile for its unparsed lines."""
-
-    def read(config: LogConfig) -> tuple[list[Logline], Logfile]:
-        with Logfile(config, logger=logging.getLogger()) as logfile:
-            lines = list(logfile)
-        return lines, logfile
-    return read
-
-
-@pytest.fixture
 def run_logreach(monkeypatch: pytest.MonkeyPatch,
                  tmp_path: Path) -> Callable[..., tuple[list[Logline], int | str | None]]:
     """run_logreach(path, *args) runs the CLI with the types file and ignore
@@ -80,7 +65,7 @@ def run_logreach(monkeypatch: pytest.MonkeyPatch,
         monkeypatch.setattr(cli, 'print_logline', printed.append)
         monkeypatch.setattr(sys, 'argv', [
             'logreach', str(path),
-            '--ignorelist-file', str(tmp_path / 'ignore_list.txt'),
+            '--ignore-file', str(tmp_path / 'ignore_list.txt'),
             '--types-file', str(tmp_path / 'logtypes.json'),
             *args])
         try:

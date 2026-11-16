@@ -28,10 +28,16 @@ logreach gather/logs --check
 # also ask for the type of each file that is not detected, and save the answers
 logreach gather/logs --check --interactive
 
+# do not list the problems at the end; the exit code is still 1 if there are any
+logreach gather/logs --quiet
+
+# stop at the first problem instead of listing all problems at the end
+logreach gather/logs --check --fail-fast
+
 # set the type instead of detecting it
 logreach audit.log --type audit
-logreach app.json --type json --datetimekey time
-logreach web_php.log --type syslog --datetimeregex '\A(.+?UTC)'
+logreach app.json --type json --datetime-key time
+logreach web_php.log --type syslog --datetime-regex '\A(.+?UTC)'
 
 # read dates like 1/9/2026 as 1 September
 logreach suricata.log --dayfirst
@@ -41,7 +47,7 @@ logreach suricata.log --dayfirst
 
 For each file, the first source that applies wins:
 
-1. `--type` (with `--datetimekey`, `--datetimeregex` as needed), applied to every file
+1. `--type` (with `--datetime-key`, `--datetime-regex` as needed), applied to every file
 2. the file's entry in [`logtypes.json`](configuration.md)
 3. detection: json, audit, access and syslog are tried in this order; the first under which a line
    has a timestamp wins
@@ -93,20 +99,20 @@ Skipped files are no problems. Without `--check` they are skipped without output
 Run this first on a new directory. For every file whose type is not detected, `--interactive`
 (`-i`) shows its first lines and asks what to do with it:
 
-* `skip` leaves it undetermined, so it is reported as a problem 
+* `skip` leaves it undetermined, so it is reported as a problem.
 * `ignore` adds the file's path to [`ignore_list.txt`](configuration.md).
 * `edit` asks for the log type and what it needs:
     * `syslog`, `audit`, `access`: Enter keeps the type's default regex; a custom regex needs a
       group `(...)` around the timestamp.
     * `json`: pick the key of the timestamp from the keys of the first line.
-    * If the timestamps have no timezone, you are asked for one; 
+    * If the timestamps have no timezone, you are asked for one.
 
 Before saving, logreach shows the first parsed timestamps. If the answer reads no timestamp, or
 you answer `n`, it asks again whether to edit, ignore or skip the file. Saved answers go into
 [`logtypes.json`](configuration.md) with the path exactly as shown. To change an answer, edit or delete its line in
 `logtypes.json`; `dayfirst` can be added this way if necessary.
 
-`--interactive` only works together with `--check` and in a terminal; (Ctrl-D) skips the remaining questions.
+`--interactive` only works together with `--check` and in a terminal. Ctrl-D skips the remaining questions.
 
 ## Problems and exit codes
 
@@ -116,11 +122,12 @@ Logreach does not stop at a problem. It lists them on stderr at the end of the r
 * lines without a timestamp, including JSON lines that are not valid JSON (e.g. cut off mid-write)
 * errors while reading a file, e.g. a JSON line without the timestamp key
 
-`--max-problems` limits how many are listed, `--fail-fast` stops at the first one, and
-`--require-timestamp` treats a line without a timestamp as an error.
+`--max-problems` limits how many are listed, `-q` / `--quiet` lists none (the exit code still
+shows them), `--fail-fast` stops at the first one, and `--require-timestamp` treats a line without a
+timestamp as an error.
 
 | Exit code | Meaning |
 |---|---|
 | 0 | no problems |
 | 1 | problems found |
-| 2 | usage error, e.g. `PATH` does not exist or `--type json` without `--datetimekey` |
+| 2 | usage error, e.g. `PATH` does not exist or `--type json` without `--datetime-key` |

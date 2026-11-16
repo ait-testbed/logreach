@@ -34,6 +34,8 @@ class LogConfig:
     dayfirst: bool = field(default=False, kw_only=True)
     # timezone of timestamps that have none, e.g. classic syslog; None means UTC
     timezone: tzinfo | None = field(default=None, kw_only=True)
+    # a line is read only if it matches one of these regexes; empty reads every line
+    grep: list[Pattern[str]] = field(default_factory=list, kw_only=True)
 
     def with_timezone(self, timestamp: datetime) -> datetime:
         """Attach the config's timezone (UTC if unset) to a timestamp without
@@ -42,7 +44,14 @@ class LogConfig:
             return timestamp.replace(tzinfo=self.timezone or timezone.utc)
         return timestamp
 
-    def in_range(self, timestamp: datetime) -> bool:
+    def matches(self, line: str) -> bool:
+        return not self.grep or any(pattern.search(line) for pattern in self.grep)
+
+    def in_range(self, timestamp: datetime | None) -> bool:
+        """None (a line before the first timestamp) is in range only without a
+        time window."""
+        if timestamp is None:
+            return self.begin is None and self.end is None
         # both sides with a timezone: comparing one with and one without raises TypeError
         timestamp = self.with_timezone(timestamp)
         after_begin = self.begin is None or timestamp >= self.with_timezone(self.begin)

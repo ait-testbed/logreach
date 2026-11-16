@@ -1,10 +1,13 @@
+import json
+import re
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths
-from logreach.exceptions import LogTypeError
+import logreach.analyzer
+from logreach.analyzer import Analyzer, IgnoreList, KnownLogfilePaths, json_timestamp_key
+from logreach.exceptions import LogreachError, LogTypeError
 from logreach.schemas.logfileconfig import JsonLogConfig, LogConfig, RegexLogConfig, TimestampRegex
 from samples import ACCESS, AUDIT, EVE_JSON, JSON_TIME, SYSLOG
 
@@ -38,6 +41,15 @@ def test_detects_json_and_its_timestamp_key(tmp_path, content, key):
     config = detect(tmp_path, content)
     assert isinstance(config, JsonLogConfig)
     assert config.datetime_key == key
+
+
+def test_json_detection_reads_at_most_max_first_line_chars(tmp_path, monkeypatch):
+    path = tmp_path / 'eve.json'
+    path.write_text(EVE_JSON)
+    assert json_timestamp_key(str(path)) == 'timestamp'
+    monkeypatch.setattr(logreach.analyzer, 'MAX_FIRST_LINE_CHARS', len(EVE_JSON) // 2)
+    with pytest.raises(json.JSONDecodeError):  # cut off: no json, so detection tries the next type
+        json_timestamp_key(str(path))
 
 
 def test_detect_config_empty_file(tmp_path):
@@ -124,6 +136,18 @@ def test_ignore_list_ignores_extensions(path, reason):
 
 
 def test_known_logfile_paths_contains_listed_paths(types_file):
-    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json'})))
+    known = KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/suricata/eve.json', 'type': 'json',
+                                              'datetimekey': 'timestamp'})))
     assert '/var/log/suricata/eve.json' in known
     assert '/var/log/syslog' not in known
+
+
+@pytest.mark.parametrize('entry, message', [
+    ({'type': 'json'}, 'datetimekey'),
+    ({'type': 'nginx'}, 'nginx'),
+    ({'type': 'syslog', 'datetimeregex': '(unclosed'}, 'missing'),
+    ({'type': 'syslog', 'timezone': 'Mars/Base'}, 'Mars/Base'),
+])
+def test_known_logfile_paths_rejects_broken_entries(types_file, entry, message):
+    with pytest.raises(LogreachError, match=rf':1: .*{re.escape(message)}'):
+        KnownLogfilePaths(str(types_file({'logfile_path': '/var/log/x.log', **entry})))

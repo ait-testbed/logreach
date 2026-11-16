@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 from datetime import datetime, tzinfo
@@ -16,12 +15,15 @@ JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts'
 DETECTION_ORDER = (LogType.JSON, LogType.AUDIT, LogType.ACCESS, LogType.SYSLOG)
 DEFAULT_TYPES_FILE = 'logtypes.json'
 DEFAULT_IGNORES_FILE = 'ignore_list.txt'
+# characters of the first line parsed as JSON: a file that is one huge line (e.g. a JSON array export)
+# would else be loaded whole; a longer line is cut off, is no valid JSON and so no json type
+MAX_FIRST_LINE_CHARS = 1_000_000
 
 
 def json_timestamp_key(path: str) -> str | None:
     """Return the first known timestamp key in the file's first line."""
     with open(path, 'r') as logfile:
-        record = json.loads(logfile.readline())
+        record = json.loads(logfile.readline(MAX_FIRST_LINE_CHARS))
     if not isinstance(record, dict):
         return None
     return next((key for key in JSON_TIMESTAMP_KEYS if key in record), None)
@@ -92,7 +94,7 @@ class KnownLogfilePaths:
 
     def _read_file(self) -> None:
         """Read one entry per line; blank lines are skipped, broken ones raise
-        LogreachError."""
+        LogreachError, so a bad entry stops the run before reading."""
         with open(self.types_file, 'r') as list_file:
             for lineno, line in enumerate(list_file, 1):
                 if not line.strip():
@@ -103,6 +105,10 @@ class KnownLogfilePaths:
                 except (json.JSONDecodeError, TypeError, KeyError):
                     raise LogreachError(f'{self.types_file}:{lineno}: no JSON object with "logfile_path": '
                                         f'{line.strip()}')
+                try:
+                    self.config_for(item['logfile_path'])
+                except (ValueError, re.error, LogreachError) as e:
+                    raise LogreachError(f'{self.types_file}:{lineno}: {e}')
 
     def __contains__(self, path: str) -> bool:
         return path in self.data
@@ -125,7 +131,7 @@ class KnownLogfilePaths:
             try:
                 timezone = ZoneInfo(entry['timezone'])
             except (ZoneInfoNotFoundError, ValueError):
-                raise LogreachError(f'Unknown timezone in {self.types_file}: {entry["timezone"]}')
+                raise LogreachError(f'unknown timezone {entry["timezone"]!r}')
         return config_factory(path, LogType(entry['type']), allow_empty_timestamp=allow_empty_timestamp,
                               datetime_key=entry.get('datetimekey'),
                               datetime_regex=entry.get('datetimeregex'),
@@ -163,8 +169,8 @@ class Analyzer:
             config = config_factory(path, logtype, datetime_key=datetime_key,
                                     allow_empty_timestamp=allow_empty_timestamp)
             # get back first line that parses as logtype
-            with Logfile(config, logger=logging.getLogger()) as lf:
-                first_line = next(lf, None)
+            with Logfile(config) as lf:
+                first_line = next((line for line in lf if line.timestamp is not None), None)
         except UnicodeDecodeError:
             raise LogTypeError(f'Unsupported filetype: {path}')
         except json.decoder.JSONDecodeError:

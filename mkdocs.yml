@@ -15,10 +15,10 @@ nav:
     - Installation: installation.md
     - Configuration: configuration.md
     - Usage: usage.md
+    - Python API: api.md
   - Contributing:
     - Git Workflow: contribution.md
     - Development: development.md
-    - Requirements: requirements.md
   - Maintainers:
     - Release Process: release.md
 

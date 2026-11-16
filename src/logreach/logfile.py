@@ -10,6 +10,8 @@ from logreach.exceptions import DateTimeNotFound, LogreachError, NoTimestamp
 from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
 from .schemas.logline import Logline
 
+logger = logging.getLogger(__name__)
+
 # lines without timestamp that Logfile keeps for reporting; the rest are only counted
 MAX_KEPT_UNPARSED = 5
 
@@ -28,7 +30,7 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     logfile.
 
     For json: the timestamp is read from the field datetime_key, which is
-    required (TypeError otherwise).
+    required (ValueError otherwise).
     For syslog, audit and access: the timestamp is the first group of datetime_regex, or of the type's
     default regex from TimestampRegex if none is given.
     dayfirst reads ambiguous dates like 1/9/2026 as day/month.
@@ -36,7 +38,7 @@ def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: b
     """
     if logtype == LogType.JSON:
         if not datetime_key:
-            raise TypeError('json-type needs a datetime_key to identify the timestamp')
+            raise ValueError('type json needs a datetimekey for the timestamp')
         return JsonLogConfig(logfile_path=Path(logfile_path), datetime_key=datetime_key,
                              begin=begin, end=end, allow_empty_timestamp=allow_empty_timestamp,
                              dayfirst=dayfirst, timezone=timezone)
@@ -54,11 +56,12 @@ class Logfile:
     leaving the block (or close()), not when the object is created.
     """
 
-    def __init__(self, config: LogConfig, logger: logging.Logger):
+    def __init__(self, config: LogConfig):
         self.config: LogConfig = config
-        self.logger = logger
         self.filehandle: TextIO | None = None
         self.lineno: int = 0
+        # of the last line with timestamp: lines without one after it share its place in the time window
+        self.last_timestamp: datetime | None = None
         # lines skipped because they have no timestamp: the first few as (lineno, reason, line), and a count
         self.unparsed: list[tuple[int, str, str]] = []
         self.unparsed_count: int = 0
@@ -75,16 +78,24 @@ class Logfile:
         return self
 
     def __next__(self) -> Logline:
-        """Return the next line that has a timestamp inside the time window;
-        lines without timestamp are recorded in unparsed and skipped."""
+        """Return the next line inside the time window that matches the
+        config's grep.
+
+        A line without timestamp is returned too, with timestamp None
+        and the reason, and recorded in unparsed. It belongs to the last
+        line with timestamp before it (e.g. a stack trace), so it is in
+        the time window if that line is.
+        """
         if not self.filehandle:
             raise LogreachError('Logfile is not open for reading')
         for line in self.filehandle:
             self.lineno += 1
-            timestamp = self._parse_timestamp(line)
-            if timestamp is not None and self.config.in_range(timestamp):
+            timestamp, reason = self._parse_timestamp(line)
+            if timestamp is not None:
+                self.last_timestamp = timestamp
+            if self.config.in_range(self.last_timestamp) and self.config.matches(line):
                 return Logline(timestamp=timestamp, raw=line, lineno=self.lineno,
-                               filename=str(self.config.logfile_path))
+                               filename=str(self.config.logfile_path), reason=reason)
         raise StopIteration
 
     def open(self) -> None:
@@ -96,16 +107,17 @@ class Logfile:
             self.filehandle.close()
             self.filehandle = None
             self.lineno = 0
+            self.last_timestamp = None
         else:
-            self.logger.warning("Won't close the file since it is not open")
+            logger.warning("Won't close the file since it is not open")
 
-    def _parse_timestamp(self, line: str) -> datetime | None:
-        """Parse the timestamp of line and attach the config's timezone if it
-        has none.
+    def _parse_timestamp(self, line: str) -> tuple[datetime | None, str | None]:
+        """Return the timestamp of line, with the config's timezone attached if
+        it has none, and None as reason.
 
         A line without timestamp is recorded in unparsed and returns
-        None, or raises DateTimeNotFound if empty timestamps are not
-        allowed.
+        (None, why), or raises DateTimeNotFound if empty timestamps are
+        not allowed.
         """
         reason = 'no timestamp'
         try:
@@ -113,10 +125,10 @@ class Logfile:
         except NoTimestamp as e:
             timestamp, reason = None, str(e)
         if timestamp is not None:
-            return self.config.with_timezone(timestamp)
+            return self.config.with_timezone(timestamp), None
         if not self.config.allow_empty_timestamp:
             raise DateTimeNotFound(f'line {self.lineno}: {reason}')
         self.unparsed_count += 1
         if len(self.unparsed) < MAX_KEPT_UNPARSED:
             self.unparsed.append((self.lineno, reason, line))
-        return None
+        return None, reason
