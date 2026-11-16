@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from dateutil.parser import parse
+from dateutil.parser import ParserError, parse
 from rich import print
 from rich.console import Console
 from rich.logging import RichHandler
@@ -38,7 +38,10 @@ def setup_logger() -> logging.Logger:
 
 
 def parsed_datetime(datetime_str: str) -> datetime:
-    return parse(datetime_str, fuzzy=True)
+    try:
+        return parse(datetime_str, fuzzy=True)
+    except (ParserError, OverflowError):
+        raise argparse.ArgumentTypeError(f'not a date: {datetime_str}')
 
 
 def parsed_timezone(name: str) -> ZoneInfo:
