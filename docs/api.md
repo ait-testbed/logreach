@@ -1,6 +1,6 @@
 # Python API
 
-Everything the `logreach` command does, from Python code: no printing, no exit, no questions.
+Everything the `logreach` command does from Python code.
 
 ## Read lines
 
@@ -31,7 +31,7 @@ line with timestamp before them, e.g. a stack trace, and are in the time window 
 ## File events
 
 ```python
-from logreach import FileStatus
+from logreach import FileEvent, FileStatus
 
 for item in reader.read('/var/log'):
     if isinstance(item, FileEvent) and item.status != FileStatus.READ:
@@ -58,7 +58,7 @@ reader.problems.undetermined_files
 reader.problems.failed_files
 ```
 
-They add up over all `read()` calls of the same `Logreach`.
+Each `read()` (and `check()`) starts with empty problems.
 
 ## Options
 

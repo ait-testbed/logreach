@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-import logreach.__cli__ as cli
+import logreach.__main__ as cli
 from logreach.schemas.logline import Logline
 
 

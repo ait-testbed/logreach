@@ -1,7 +1,7 @@
 # Configuration
 
 Logreach reads two files from the current directory and creates them empty if they are missing.
-`--ignorelist-file` and `--types-file` choose other paths; `''` turns a file off.
+`--ignore-file` and `--types-file` choose other paths; `''` turns a file off.
 
 ## `ignore_list.txt`: files to skip
 
@@ -18,7 +18,7 @@ apt/history\.log\Z
 suricata/stats\.log\Z
 ```
 
-Files with the extensions in `--ignored-extension` are skipped as well (default
+Files with the extensions in `--ignored-extensions` are skipped as well (default
 `.gz,.xz,.conf,.journal,.journal~`; `''` for none).
 
 ## `logtypes.json`: set the type of a file
