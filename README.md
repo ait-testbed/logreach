@@ -30,36 +30,16 @@ logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 # every logfile below a directory
 logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
-# only the lines in the window that match any of the regexes (--ignore-case for any case)
-logreach gather/logs --begin '2026-09-01 14:00' --grep 'password' --grep 'sudo:.*'
-
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
 
 # also ask for the type of each file that is not detected, and save the answers in logtypes.json
 logreach gather/logs --check --interactive
-
-# do not list the problems at the end; the exit code is still 1 if there are any
-logreach gather/logs --quiet
-
-# stop at the first problem instead of listing all problems at the end
-logreach gather/logs --check --fail-fast
-
-# set the type instead of detecting it
-logreach audit.log --type audit
-logreach app.json --type json --datetimekey time
-logreach web_php.log --type syslog --datetimeregex '\A(.+?UTC)'
-
-# read dates like 1/9/2026 as 1 September
-logreach suricata.log --dayfirst
-
-# timestamps without timezone (in the logs and in --begin/--end) are Vienna time, not UTC
-logreach gather/logs --begin '2026-09-01 14:00' --timezone Europe/Vienna
 ```
 
 Files where no type fits and lines without a timestamp are listed on stderr at the end of the
 run (exit code 1). See `logreach --help` for all options and the
-[documentation](https://ait-testbed.github.io/logreach/) for details.
+[documentation](https://ait-testbed.github.io/logreach/) for more examples.
 
 ### Configuration files
 
