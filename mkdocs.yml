@@ -19,7 +19,6 @@ nav:
   - Contributing:
     - Git Workflow: contribution.md
     - Development: development.md
-    - Requirements: requirements.md
   - Maintainers:
     - Release Process: release.md
 
