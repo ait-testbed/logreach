@@ -1,7 +1,6 @@
 """Python API: what the logreach command does, without printing, exiting or
 asking questions."""
 
-import logging
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator
@@ -130,7 +129,6 @@ class Logreach:
         self.require_timestamp = require_timestamp
         self.fail_fast = fail_fast
         self.on_undetermined = on_undetermined
-        self.logger = logging.getLogger('logreach')
         # raises LogreachError for a broken types file: nothing could be read right
         self.analyzer = Analyzer(types_file=types_file or '', ignores_file=ignores_file or '',
                                  ignored_extensions=ignored_extensions)
@@ -204,7 +202,7 @@ class Logreach:
             config = self.make_config(path)
 
         yield FileEvent(path, FileStatus.READ, config.describe(), config)
-        with Logfile(config, logger=self.logger) as logfile:
+        with Logfile(config) as logfile:
             try:
                 for line in logfile:
                     # checked before yielding: reading this line may have skipped one without timestamp

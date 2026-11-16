@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import re
 from datetime import datetime, tzinfo
@@ -170,7 +169,7 @@ class Analyzer:
             config = config_factory(path, logtype, datetime_key=datetime_key,
                                     allow_empty_timestamp=allow_empty_timestamp)
             # get back first line that parses as logtype
-            with Logfile(config, logger=logging.getLogger()) as lf:
+            with Logfile(config) as lf:
                 first_line = next((line for line in lf if line.timestamp is not None), None)
         except UnicodeDecodeError:
             raise LogTypeError(f'Unsupported filetype: {path}')

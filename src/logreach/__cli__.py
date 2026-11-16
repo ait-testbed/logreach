@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 import re
 import sys
@@ -8,8 +7,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.parser import ParserError, parse
 from rich import print
-from rich.console import Console
-from rich.logging import RichHandler
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
 from logreach.api import FileEvent, FileStatus, Logreach, Problems
@@ -17,24 +14,6 @@ from logreach.exceptions import LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.schemas.logfileconfig import LogType
 from logreach.schemas.logline import Logline
-
-
-def setup_logger() -> logging.Logger:
-    DATEFMT = '%Y-%m-%dT%H:%M:%SZ'
-    FORMAT = '%(message)s'
-    if sys.stderr.isatty():
-        handler = RichHandler(console=Console(stderr=True))
-        FORMAT = '%(message)s'
-    else:
-        FORMAT = '%(asctime)s\t%(levelname)s\t%(message)s'
-        handler = logging.StreamHandler()
-
-    logging.basicConfig(
-        level='NOTSET', format=FORMAT, datefmt=DATEFMT, handlers=[handler]
-    )
-
-    logger = logging.getLogger(__name__)
-    return logger
 
 
 def parsed_datetime(datetime_str: str) -> datetime:
@@ -150,7 +129,6 @@ def ask_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> bool:
 
 def main() -> None:
     args = parse_args()
-    setup_logger()
     ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
                           if extension.strip()]
     try:

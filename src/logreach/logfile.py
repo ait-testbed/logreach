@@ -10,6 +10,8 @@ from logreach.exceptions import DateTimeNotFound, LogreachError, NoTimestamp
 from .schemas.logfileconfig import JsonLogConfig, LogConfig, LogType, RegexLogConfig, TimestampRegex
 from .schemas.logline import Logline
 
+logger = logging.getLogger(__name__)
+
 # lines without timestamp that Logfile keeps for reporting; the rest are only counted
 MAX_KEPT_UNPARSED = 5
 
@@ -54,9 +56,8 @@ class Logfile:
     leaving the block (or close()), not when the object is created.
     """
 
-    def __init__(self, config: LogConfig, logger: logging.Logger):
+    def __init__(self, config: LogConfig):
         self.config: LogConfig = config
-        self.logger = logger
         self.filehandle: TextIO | None = None
         self.lineno: int = 0
         # of the last line with timestamp: lines without one after it share its place in the time window
@@ -108,7 +109,7 @@ class Logfile:
             self.lineno = 0
             self.last_timestamp = None
         else:
-            self.logger.warning("Won't close the file since it is not open")
+            logger.warning("Won't close the file since it is not open")
 
     def _parse_timestamp(self, line: str) -> tuple[datetime | None, str | None]:
         """Return the timestamp of line, with the config's timezone attached if

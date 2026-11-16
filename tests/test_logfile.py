@@ -1,4 +1,3 @@
-import logging
 import re
 from datetime import datetime
 
@@ -19,7 +18,7 @@ def read(tmp_path, text, grep=(), **options):
     path.write_text(text)
     config = config_factory(str(path), LogType.SYSLOG, **options)
     config.grep = [re.compile(pattern) for pattern in grep]
-    with Logfile(config, logger=logging.getLogger()) as logfile:
+    with Logfile(config) as logfile:
         lines = list(logfile)
     return lines, logfile
 
