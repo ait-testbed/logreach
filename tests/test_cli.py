@@ -44,8 +44,14 @@ def test_skips_ignored_and_empty_files_without_output(make_logs, ignore_list, ru
 ])
 def test_ignored_extension_option(make_logs, run_logreach, extensions, read):
     logs = make_logs({'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
-    printed, _ = run_logreach(logs, '--ignored-extension', extensions)
+    printed, _ = run_logreach(logs, '--ignored-extensions', extensions)
     assert {line.filename for line in printed} == {str(logs / name) for name in read}
+
+
+def test_old_option_spelling_still_works(make_logs, run_logreach):
+    logs = make_logs({'syslog': SYSLOG, 'syslog.1.gz': SYSLOG})
+    printed, _ = run_logreach(logs, '--ignored-extension', '')
+    assert {line.filename for line in printed} == {str(logs / 'syslog'), str(logs / 'syslog.1.gz')}
 
 
 @pytest.mark.parametrize('extra_args', [(), ('--type', 'syslog')])
@@ -64,7 +70,7 @@ def test_type_applies_to_every_file_in_directory(make_logs, run_logreach):
     web_php = '9/1/26, 1:25:44 PM UTC.519574 web_php[1170].INF [Login successful]\n'
     logs = make_logs({'web_php.log': web_php, 'web_php.log.1': web_php})
     printed, exit_code = run_logreach(logs, '--type', 'syslog',
-                                      '--datetimeregex', r'\A(.+?UTC)')
+                                      '--datetime-regex', r'\A(.+?UTC)')
     assert {line.filename for line in printed} == {str(logs / 'web_php.log'), str(logs / 'web_php.log.1')}
     assert exit_code == 0
 
@@ -331,23 +337,23 @@ def test_missing_path_is_a_usage_error(run_logreach, tmp_path, capsys):
     assert 'missing does not exist' in capsys.readouterr().err
 
 
-@pytest.mark.parametrize('option', ['--datetimekey', '--datetimeregex'])
+@pytest.mark.parametrize('option', ['--datetime-key', '--datetime-regex', '--datetimekey', '--datetimeregex'])
 def test_type_options_require_type(run_logreach, tmp_path, capsys, option):
     _, exit_code = run_logreach(tmp_path, option, 'x')
     assert exit_code == 2
-    assert '--datetimekey and --datetimeregex require --type' in capsys.readouterr().err
+    assert '--datetime-key and --datetime-regex require --type' in capsys.readouterr().err
 
 
 def test_json_without_datetimekey_is_a_usage_error(run_logreach, tmp_path, capsys):
     _, exit_code = run_logreach(tmp_path / 'app.json', '--type', 'json')
     assert exit_code == 2
-    assert '--type json requires --datetimekey' in capsys.readouterr().err
+    assert '--type json requires --datetime-key' in capsys.readouterr().err
 
 
 def test_invalid_datetimeregex_is_a_usage_error(run_logreach, tmp_path, capsys):
-    _, exit_code = run_logreach(tmp_path, '--type', 'syslog', '--datetimeregex', 'a(')
+    _, exit_code = run_logreach(tmp_path, '--type', 'syslog', '--datetime-regex', 'a(')
     assert exit_code == 2
-    assert "invalid --datetimeregex regex 'a('" in capsys.readouterr().err
+    assert "invalid --datetime-regex regex 'a('" in capsys.readouterr().err
 
 
 def test_invalid_grep_regex_is_a_usage_error(run_logreach, tmp_path, capsys):

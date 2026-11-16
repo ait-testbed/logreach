@@ -62,8 +62,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('path', help='logfile or directory with logfiles')
     parser.add_argument('--type', choices=[t.value for t in LogType],
                         help='read every file as this type instead of detecting it')
-    parser.add_argument('--datetimekey', help='timestamp key for --type json')
-    parser.add_argument('--datetimeregex',
+    parser.add_argument('--datetime-key', help='timestamp key for --type json')
+    parser.add_argument('--datetime-regex',
                         help='regex whose first group is the timestamp, for --type syslog, audit or access')
     parser.add_argument('--dayfirst', action='store_true',
                         help='read ambiguous dates like 1/9/2026 as day/month (1 September)')
@@ -75,9 +75,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--timezone', default='UTC', type=parsed_timezone,
                         help='timezone of timestamps without one, in the logs and in --begin / --end, '
                              'e.g. Europe/Vienna; a "timezone" in the types file overrides it per file')
-    parser.add_argument('--ignored-extension', default='.gz,.xz,.conf,.journal,.journal~',
+    parser.add_argument('--ignored-extensions', default='.gz,.xz,.conf,.journal,.journal~',
                         help="comma separated list of file extensions ignored in directories, '' for none")
-    parser.add_argument('--ignorelist-file', default=DEFAULT_IGNORES_FILE,
+    parser.add_argument('--ignore-file', default=DEFAULT_IGNORES_FILE,
                         help='file with one regex per line; matching paths in directories are ignored')
     parser.add_argument('--types-file', help='logtype configuration database', default=DEFAULT_TYPES_FILE)
     parser.add_argument('--require-timestamp', action='store_true',
@@ -93,14 +93,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-i', '--interactive', action='store_true',
                         help='with --check: ask for the type of each file whose type is not detected, '
                              'and save the answer in --types-file')
+    # old spellings, hidden from --help so scripts using them keep working
+    for old, dest in (('--datetimekey', 'datetime_key'), ('--datetimeregex', 'datetime_regex'),
+                      ('--ignored-extension', 'ignored_extensions'), ('--ignorelist-file', 'ignore_file')):
+        parser.add_argument(old, dest=dest, default=argparse.SUPPRESS, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     # also checked by Logreach, here with the flag names
-    if args.type == LogType.JSON.value and not args.datetimekey:
-        parser.error('--type json requires --datetimekey')
-    if (args.datetimekey or args.datetimeregex) and not args.type:
-        parser.error('--datetimekey and --datetimeregex require --type')
-    regexes = [('--datetimeregex', args.datetimeregex), *(('--grep', p) for p in args.grep or ())]
+    if args.type == LogType.JSON.value and not args.datetime_key:
+        parser.error('--type json requires --datetime-key')
+    if (args.datetime_key or args.datetime_regex) and not args.type:
+        parser.error('--datetime-key and --datetime-regex require --type')
+    regexes = [('--datetime-regex', args.datetime_regex), *(('--grep', p) for p in args.grep or ())]
     for option, pattern in regexes:
         try:
             re.compile(pattern or '')
@@ -129,15 +133,15 @@ def ask_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> bool:
 
 def main() -> None:
     args = parse_args()
-    ignored_extensions = [extension.strip() for extension in args.ignored_extension.split(',')
+    ignored_extensions = [extension.strip() for extension in args.ignored_extensions.split(',')
                           if extension.strip()]
     try:
-        logreach = Logreach(logtype=args.type, datetime_key=args.datetimekey,
-                            datetime_regex=args.datetimeregex, dayfirst=args.dayfirst,
+        logreach = Logreach(logtype=args.type, datetime_key=args.datetime_key,
+                            datetime_regex=args.datetime_regex, dayfirst=args.dayfirst,
                             timezone=args.timezone, begin=args.begin, end=args.end, grep=args.grep or (),
                             ignore_case=args.ignore_case, require_timestamp=args.require_timestamp,
                             fail_fast=args.fail_fast, types_file=args.types_file,
-                            ignores_file=args.ignorelist_file, ignored_extensions=ignored_extensions,
+                            ignores_file=args.ignore_file, ignored_extensions=ignored_extensions,
                             on_undetermined=ask_logtype if args.interactive else None)
     except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
         sys.stderr.write(f'logreach: {e}\n')

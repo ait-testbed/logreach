@@ -65,7 +65,7 @@ def run_logreach(monkeypatch: pytest.MonkeyPatch,
         monkeypatch.setattr(cli, 'print_logline', printed.append)
         monkeypatch.setattr(sys, 'argv', [
             'logreach', str(path),
-            '--ignorelist-file', str(tmp_path / 'ignore_list.txt'),
+            '--ignore-file', str(tmp_path / 'ignore_list.txt'),
             '--types-file', str(tmp_path / 'logtypes.json'),
             *args])
         try:

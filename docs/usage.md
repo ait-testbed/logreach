@@ -36,8 +36,8 @@ logreach gather/logs --check --fail-fast
 
 # set the type instead of detecting it
 logreach audit.log --type audit
-logreach app.json --type json --datetimekey time
-logreach web_php.log --type syslog --datetimeregex '\A(.+?UTC)'
+logreach app.json --type json --datetime-key time
+logreach web_php.log --type syslog --datetime-regex '\A(.+?UTC)'
 
 # read dates like 1/9/2026 as 1 September
 logreach suricata.log --dayfirst
@@ -47,7 +47,7 @@ logreach suricata.log --dayfirst
 
 For each file, the first source that applies wins:
 
-1. `--type` (with `--datetimekey`, `--datetimeregex` as needed), applied to every file
+1. `--type` (with `--datetime-key`, `--datetime-regex` as needed), applied to every file
 2. the file's entry in [`logtypes.json`](configuration.md)
 3. detection: json, audit, access and syslog are tried in this order; the first under which a line
    has a timestamp wins
@@ -130,4 +130,4 @@ timestamp as an error.
 |---|---|
 | 0 | no problems |
 | 1 | problems found |
-| 2 | usage error, e.g. `PATH` does not exist or `--type json` without `--datetimekey` |
+| 2 | usage error, e.g. `PATH` does not exist or `--type json` without `--datetime-key` |
