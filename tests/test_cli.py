@@ -240,6 +240,20 @@ def test_lists_only_max_problems_and_counts_the_rest(make_logs, run_logreach, ca
     assert '0 lines without timestamp, 3 undetermined files' in err
 
 
+@pytest.mark.parametrize('extra_args', [(), ('--fail-fast',), ('--check', '--grep', 'x')])
+def test_quiet_lists_no_problems_but_exits_with_1(make_logs, run_logreach, capsys, extra_args):
+    logs = make_logs({'syslog': SYSLOG + 'no timestamp\n', 'notes.txt': 'no timestamp\n'})
+    printed, exit_code = run_logreach(logs, '-q', *extra_args)
+    assert exit_code == 1
+    assert capsys.readouterr().err == ''
+
+
+def test_quiet_with_interactive_is_a_usage_error(run_logreach, tmp_path, capsys):
+    _, exit_code = run_logreach(tmp_path, '--check', '-i', '-q')
+    assert exit_code == 2
+    assert '--interactive cannot be combined with --quiet' in capsys.readouterr().err
+
+
 def test_fail_fast_stops_at_first_undetermined_file(make_logs, run_logreach, capsys):
     logs = make_logs({f'notes{i}.txt': 'no timestamp\n' for i in range(3)})
     _, exit_code = run_logreach(logs, '--fail-fast')

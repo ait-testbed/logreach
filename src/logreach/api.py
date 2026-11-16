@@ -86,8 +86,8 @@ class Logreach:
     each.
 
     The options apply to every file. types_file and ignores_file are
-    None by default: then no file is read or created. Problems of all
-    reads are collected in self.problems.
+    None by default: then no file is read or created. The problems of
+    the last read() are collected in self.problems.
 
     on_undetermined(path, error, analyzer) is called for a file whose
     type is not detected; returning True means the answer was saved in
@@ -140,19 +140,18 @@ class Logreach:
         """Yield, file by file, a FileEvent and then the file's lines in order.
 
         Lines without timestamp are yielded too (timestamp None, reason
-        set). Problems do not stop the run; they are added to
-        self.problems. With fail_fast, reading stops at the first
-        problem.
+        set). Problems do not stop the run; they are collected in
+        self.problems, which starts empty for each read. With fail_fast,
+        reading stops at the first problem.
         """
-        # problems of earlier reads must not stop this one
-        problems_before = len(self.problems.messages)
+        self.problems = Problems()
         for filepath, ignored in iter_logfiles(os.fspath(path), self.analyzer):
             try:
                 yield from self._read_file(filepath, ignored)
             except FILE_ERRORS as e:
                 self.problems.add_failed(filepath, e)
                 yield FileEvent(filepath, FileStatus.FAILED, str(e))
-            if self.fail_fast and len(self.problems.messages) > problems_before:
+            if self.fail_fast and self.problems.messages:
                 return
 
     def check(self, path: str | os.PathLike[str]) -> Iterator[FileEvent]:

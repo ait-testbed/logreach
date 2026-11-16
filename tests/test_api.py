@@ -62,13 +62,15 @@ def test_require_timestamp_stops_the_file_and_reports_it(make_logs):
     assert reader.problems.failed_files == 1
 
 
-def test_fail_fast_ignores_problems_of_earlier_reads(make_logs):
+def test_each_read_starts_with_empty_problems(make_logs):
     logs = make_logs({'syslog': SYSLOG, 'syslog.1': SYSLOG})
     notes = logs.parent / 'notes.txt'
     notes.write_text('no timestamp\n')
     reader = Logreach(fail_fast=True)
     list(reader.read(notes))  # undetermined: a problem
-    assert len(linenos(reader.read(logs))) == 4  # both files, not only the first
+    # fail_fast checks after each file
+    assert len(linenos(reader.read(logs))) == 4
+    assert reader.problems.messages == []
 
 
 def test_naive_begin_is_in_timezone():
