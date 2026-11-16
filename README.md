@@ -13,7 +13,7 @@ Requires Python >= 3.14.
 ```bash
 git clone https://github.com/ait-testbed/logreach.git
 cd logreach
-uv sync
+uv run logreach --help
 ```
 
 With `uv`, prefix the commands below with `uv run`.
