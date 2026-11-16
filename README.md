@@ -16,25 +16,23 @@ cd logreach
 uv run logreach --help
 ```
 
-With `uv`, prefix the commands below with `uv run`.
-
 ## Usage
 
 ```bash
 # all lines of one logfile, type detected automatically
-logreach /var/log/syslog
+uv run logreach /var/log/syslog
 
 # only the lines between two timestamps
-logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
+uv run logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
 # every logfile below a directory
-logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
+uv run logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
 # only show the detected type of each file and the problems found
-logreach gather/logs --check
+uv run logreach gather/logs --check
 
 # also ask for the type of each file that is not detected, and save the answers in logtypes.json
-logreach gather/logs --check --interactive
+uv run logreach gather/logs --check --interactive
 ```
 
 Files where no type fits and lines without a timestamp are listed on stderr at the end of the
