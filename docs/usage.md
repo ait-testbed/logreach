@@ -4,8 +4,8 @@
 logreach PATH [--type ...] [--begin ...] [--end ...] [--check] ...
 ```
 
-`PATH` is a logfile or a directory, which is walked recursively. With `uv`, prefix the commands
-with `uv run`. `logreach --help` lists all options.
+`PATH` is a logfile or a directory, which is walked recursively. When running from source, prefix
+the commands with `uv run`. `logreach --help` lists all options.
 
 ## Examples
 
@@ -22,8 +22,14 @@ logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 # only the lines in the window that match any of the regexes (--ignore-case for any case)
 logreach gather/logs --begin '2026-09-01 14:00' --grep 'password' --grep 'sudo:.*'
 
+# one line per log line, "timestamp path:lineno:line", e.g. to sort the lines of all files by time
+logreach gather/logs --begin '2026-09-01 14:00' --plain | sort
+
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
+
+# also show on stderr why each file gets its type (which types were tried and why they failed)
+logreach gather/logs --check --debug
 
 # also ask for the type of each file that is not detected, and save the answers
 logreach gather/logs --check --interactive

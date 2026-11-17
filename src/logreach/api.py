@@ -1,6 +1,7 @@
 """Python API: what the logreach command does, without printing, exiting or
 asking questions."""
 
+import logging
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator
@@ -14,12 +15,26 @@ from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 from logreach.schemas.logline import Logline
 
+logger = logging.getLogger(__name__)
+
 # characters of a log line shown in a problem message; the line number leads to the rest
 MAX_SHOWN_CHARS = 200
 
 
 def shortened(text: str) -> str:
     return text if len(text) <= MAX_SHOWN_CHARS else text[:MAX_SHOWN_CHARS] + '…'
+
+
+def printable(text: str) -> str:
+    """Escape control characters, e.g. ESC as \\x1b: a log line or file name
+    could else send the terminal commands.
+
+    Tabs are harmless and stay.
+    """
+    if text.isprintable():
+        return text
+    return ''.join(char if char == '\t' or char.isprintable() else char.encode('unicode_escape').decode()
+                   for char in text)
 
 
 class FileStatus(Enum):
@@ -74,10 +89,17 @@ def iter_logfiles(path: str, analyzer: Analyzer) -> Iterator[tuple[str, str | No
     if not os.path.isdir(path):
         yield path, None  # named explicitly, so the ignore list does not apply
         return
-    for root, _dirs, files in os.walk(path, followlinks=True):
+    # a dump may hold symlinks: linked directories are not entered (no loops), linked files outside path
+    # are skipped (no reading e.g. /etc/shadow)
+    top = os.path.realpath(path)
+    for root, _dirs, files in os.walk(path):
         for file in files:
             filepath = os.path.join(root, file)
-            yield filepath, analyzer.ignores.ignore_reason(filepath)
+            target = os.path.realpath(filepath)
+            if os.path.islink(filepath) and os.path.commonpath([top, target]) != top:
+                yield filepath, f'symlink to {target} outside {path}'
+            else:
+                yield filepath, analyzer.ignores.ignore_reason(filepath)
 
 
 class Logreach:
@@ -184,6 +206,7 @@ class Logreach:
         else:
             skip_reason = None
         if skip_reason:
+            logger.debug('%s: skipped: %s', path, skip_reason)
             yield FileEvent(path, FileStatus.SKIPPED, skip_reason)
             return
 
@@ -201,6 +224,7 @@ class Logreach:
                 return
             config = self.make_config(path)
 
+        logger.debug('%s: reading as %s', path, config.describe())
         yield FileEvent(path, FileStatus.READ, config.describe(), config)
         with Logfile(config) as logfile:
             try:

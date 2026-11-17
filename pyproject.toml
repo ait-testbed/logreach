@@ -3,6 +3,12 @@ name = "logreach"
 description = "Filter logfiles by timestamp and detect the log type of files in a directory"
 readme = "README.md"
 requires-python = ">=3.14"
+license = "EUPL-1.2"
+license-files = ["LICENSE.md"]
+authors = [{ name = "AIT Austrian Institute of Technology GmbH", email = "aecid@ait.ac.at" }]
+maintainers = [{ name = "Wolfgang Hotwagner", email = "aecid@ait.ac.at" }]
+keywords = ["logs", "log analysis", "forensics", "syslog", "auditd", "timestamp", "filter"]
+
 dependencies = [
     "python-dateutil>=2.9.0.post0",
     "rich>=15.0.0",
@@ -10,16 +16,25 @@ dependencies = [
 
 dynamic = ["version"]
 
+[project.urls]
+Homepage = "https://github.com/ait-testbed/logreach"
+Documentation = "https://ait-testbed.github.io/logreach/"
+Issues = "https://github.com/ait-testbed/logreach/issues"
+Source = "https://github.com/ait-testbed/logreach"
+
 [project.scripts]
 logreach = "logreach.__main__:main"
 
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 namespaces = true
 where = ["src"]
+
+[tool.setuptools.package-data]
+logreach = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = {attr = "logreach.metadata.__version__"}

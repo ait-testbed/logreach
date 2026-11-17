@@ -1,15 +1,16 @@
 import argparse
+import logging
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.parser import ParserError, parse
 from rich import print
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.api import FileEvent, FileStatus, Logreach, Problems
+from logreach.api import FileEvent, FileStatus, Logreach, Problems, printable
 from logreach.exceptions import LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.schemas.logfileconfig import LogType
@@ -34,17 +35,40 @@ def print_logline(logline: Logline) -> None:
     print(logline)
 
 
-# def print_logline_with_timestamp(logline: Logline) -> None:
-#     """Not used yet: can replace print_logline to make output sortable for
-#     example."""
-#     print(f'{logline.timestamp.isoformat()} {logline.filename}:{logline.lineno}:'
-#           f'{logline.raw.rstrip("\r\n")}\n')
+def plain_line(logline: Logline) -> str:
+    """--plain: one line 'timestamp path:lineno:line' for grep, sort or cut;
+    control characters are escaped.
+
+    The timestamp is in UTC.
+    """
+    timestamp = logline.timestamp.astimezone(UTC).isoformat() if logline.timestamp else '-'
+    line: str = printable(f'{timestamp} {logline.filename}:{logline.lineno}:{logline.raw.rstrip("\r\n")}')
+    return line + '\n'
+
+
+class PrintableFormatter(logging.Formatter):
+    """--debug messages contain file names and log text: escape them like
+    the rest of the output."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        message: str = printable(super().format(record))
+        return message
+
+
+def enable_debug() -> None:
+    """Print the debug messages of logreach (not of other libraries) to stderr,
+    so stdout keeps only the output."""
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(PrintableFormatter('debug: %(message)s'))
+    logger = logging.getLogger('logreach')
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def problem_report(problems: Problems, max_problems: int) -> str:
     """List at most max_problems problems and count the rest."""
     shown = problems.messages[:max_problems]
-    report = ['', 'Problems found:', *(f'  {problem}' for problem in shown)]
+    report = ['', 'Problems found:', *(f'  {printable(problem)}' for problem in shown)]
     if len(problems.messages) > len(shown):
         report.append(f'  ... and {len(problems.messages) - len(shown)} more (see --max-problems)')
     report.append(f'{problems.unparsed_lines} lines without timestamp, '
@@ -88,6 +112,11 @@ def parse_args() -> argparse.Namespace:
                         help='do not list the problems at the end; the exit code still shows them')
     parser.add_argument('--fail-fast', action='store_true',
                         help='stop at the first problem instead of reporting all problems at the end')
+    parser.add_argument('--plain', action='store_true',
+                        help='print each line as "timestamp path:lineno:line", for piping into grep, sort or '
+                             'cut, instead of the Logline repr')
+    parser.add_argument('--debug', action='store_true',
+                        help='print on stderr why each file gets its type or is skipped')
     parser.add_argument('--check', action='store_true',
                         help="show each file's detected type instead of its lines, to find problems fast")
     parser.add_argument('-i', '--interactive', action='store_true',
@@ -133,6 +162,8 @@ def ask_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> bool:
 
 def main() -> None:
     args = parse_args()
+    if args.debug:
+        enable_debug()
     ignored_extensions = [extension.strip() for extension in args.ignored_extensions.split(',')
                           if extension.strip()]
     try:
@@ -144,7 +175,7 @@ def main() -> None:
                             ignores_file=args.ignore_file, ignored_extensions=ignored_extensions,
                             on_undetermined=ask_logtype if args.interactive else None)
     except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
-        sys.stderr.write(f'logreach: {e}\n')
+        sys.stderr.write(f'logreach: {printable(str(e))}\n')
         sys.exit(2)
 
     try:
@@ -152,11 +183,14 @@ def main() -> None:
             if isinstance(item, FileEvent):
                 # plain stdout instead of rich, which would wrap long paths
                 if args.check and item.status == FileStatus.READ:
-                    sys.stdout.write(f'{item.path}: {item.message}\n')
+                    sys.stdout.write(printable(f'{item.path}: {item.message}') + '\n')
                 elif args.check and item.status == FileStatus.SKIPPED:
-                    sys.stdout.write(f'{item.path}: skipped ({item.message})\n')
+                    sys.stdout.write(printable(f'{item.path}: skipped ({item.message})') + '\n')
             elif not args.check and item.timestamp is not None:  # lines without timestamp are reported
-                print_logline(item)
+                if args.plain:
+                    sys.stdout.write(plain_line(item))
+                else:
+                    print_logline(item)
     except KeyboardInterrupt:
         sys.exit(1)
 

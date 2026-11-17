@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from datetime import datetime, tzinfo
@@ -8,6 +9,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from logreach.exceptions import DateTimeNotFound, LogreachError, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
+
+logger = logging.getLogger(__name__)
 
 # keys that json detection looks for, in this order
 JSON_TIMESTAMP_KEYS = ('timestamp', '@timestamp', 'time', 'start-datetime', 'ts')
@@ -190,6 +193,7 @@ class Analyzer:
         If none work or the file is empty, raise LogTypeError.
         """
         if self._types and path in self._types:
+            logger.debug('%s: type from %s', path, self._types.types_file)
             return self._types.config_for(path, allow_empty_timestamp, begin=begin, end=end,
                                           dayfirst=dayfirst, timezone=timezone)
         if os.path.getsize(path) == 0:
@@ -199,8 +203,10 @@ class Analyzer:
             try:
                 # without the time window: a file with no line inside it still has a type
                 datetime_key = self._try_logtype(path, logtype, allow_empty_timestamp=allow_empty_timestamp)
-            except (LogTypeError, DateTimeNotFound):
+            except (LogTypeError, DateTimeNotFound) as e:
+                logger.debug('%s: not %s: %s', path, logtype.value, e)
                 continue  # try matching the next LogType
+            logger.debug('%s: detected as %s', path, logtype.value)
             return config_factory(path, logtype, allow_empty_timestamp=allow_empty_timestamp,
                                   datetime_key=datetime_key, begin=begin, end=end, dayfirst=dayfirst,
                                   timezone=timezone)

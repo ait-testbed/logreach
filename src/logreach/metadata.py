@@ -1,7 +1,7 @@
 __authors__ = ['Wolfgang Hotwagner']
 __contact__ = 'aecid@ait.ac.at'
 __copyright__ = 'Copyright 2026, AIT Austrian Institute of Technology GmbH'
-__date__ = '2026/09/28'
+__date__ = '2026/11/17'
 __deprecated__ = False
 __email__ = 'aecid@ait.ac.at'
 __website__ = 'https://aecid.ait.ac.at'

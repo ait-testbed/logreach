@@ -12,6 +12,7 @@ from rich.prompt import Confirm, Prompt
 from rich.text import Text
 
 from logreach.analyzer import MAX_FIRST_LINE_CHARS, Analyzer
+from logreach.api import printable
 from logreach.exceptions import FILE_ERRORS, LogTypeError
 from logreach.logfile import DEFAULT_TIMESTAMP_REGEX, Logfile, config_factory
 from logreach.schemas.logfileconfig import LogType
@@ -42,10 +43,12 @@ def ask_timestamp_location(path: str, logtype: LogType, console: Console) -> dic
         except (json.JSONDecodeError, UnicodeDecodeError):
             console.print('The first line is no JSON object.')
             return None
-        if not isinstance(record, dict) or not record:
+        # keys with control characters are left out: they cannot be typed and the prompt prints them raw
+        keys = [key for key in record if key.isprintable()] if isinstance(record, dict) else []
+        if not keys:
             console.print('The first line is no JSON object with keys.')
             return None
-        entry['datetimekey'] = Prompt.ask('Key of the timestamp', choices=list(record), console=console)
+        entry['datetimekey'] = Prompt.ask('Key of the timestamp', choices=keys, console=console)
         return entry
 
     default = DEFAULT_TIMESTAMP_REGEX[logtype].value
@@ -86,13 +89,14 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
     Returns what was done with the file.
     """
     types = analyzer.types
-    assert types is not None, '--interactive requires a types file'
+    if types is None:
+        raise ValueError('--interactive requires a types file')
     # stderr: stdout keeps only the --check lines; no markup or emoji: log lines and paths show as they are
     console = Console(stderr=True, markup=False, highlight=False, emoji=False)
-    console.print(f'\n{error}')
+    console.print('\n' + printable(str(error)))
     with open(path, errors='replace') as logfile:
         for lineno, line in enumerate(islice(logfile, SAMPLE_LINES), 1):
-            console.print(f'  {lineno} | {line.rstrip()}')
+            console.print(f'  {lineno} | {printable(line.rstrip())}')
 
     actions = ['edit', 'ignore', 'skip'] if analyzer.ignores.ignores_file else ['edit', 'skip']
     try:
@@ -116,7 +120,7 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
                     lines = list(islice((line for line in logfile if line.timestamp is not None),
                                         PREVIEW_LINES))
             except FILE_ERRORS as e:
-                console.print(f'Cannot read {path} as {logtype.value}: {e}')
+                console.print(printable(f'Cannot read {path} as {logtype.value}: {e}'))
                 continue
             if not lines:
                 console.print(f'No line has a timestamp when read as {logtype.value}.')
@@ -128,7 +132,7 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
                 timezone_name = ask_timezone(console)
                 if timezone_name:
                     entry['timezone'] = timezone_name
-            if Confirm.ask(Text(f'Save in {types.types_file}?'), default=True, console=console):
+            if Confirm.ask(Text(f'Save in {printable(types.types_file)}?'), default=True, console=console):
                 types.add(entry)
                 return Answer.SAVED
     except EOFError:  # input closed: leave this file undetermined
