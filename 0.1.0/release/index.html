@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://ait-testbed.github.io/logreach/0.1.0/release/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Release Process - Logreach</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Release Process";
+        var mkdocs_page_input_path = "release.md";
+        var mkdocs_page_url = "/logreach/0.1.0/release/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Logreach
+        </a>
+        <div class="version">
+          {'provider': 'mike'}
+        </div><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Contributing</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../contribution/">Git Workflow</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../development/">Development</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Maintainers</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Release Process</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#keeping-dependencies-up-to-date">Keeping dependencies up to date</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#steps">Steps</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#1-merge-dependabot-prs-into-main">1. Merge Dependabot PRs into main</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#2-merge-development-into-main">2. Merge development into main</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#3-determine-the-new-version-number">3. Determine the new version number</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#4-bump-the-version-number">4. Bump the version number</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#5-create-a-github-release">5. Create a GitHub release</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#6-check-automatically-triggered-workflows">6. Check automatically triggered workflows</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#7-merge-main-back-into-development">7. Merge main back into development</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Logreach</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Maintainers</li>
+      <li class="breadcrumb-item active">Release Process</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ait-testbed/logreach/edit/master/docs/release.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="release-process">Release Process</h1>
+<p>This document describes the steps to publish a new release of <code>Logreach</code>.</p>
+<h2 id="keeping-dependencies-up-to-date">Keeping dependencies up to date</h2>
+<p>Dependency updates via Dependabot do not require a full release. If only Dependabot PRs are pending and no feature work needs to go out, merge them into <code>main</code> and then merge <code>main</code> back into <code>development</code> to keep both branches in sync.</p>
+<p>To merge <code>main</code> into <code>development</code> using the GitHub UI:</p>
+<ol>
+<li>Go to the repository on GitHub and click <strong>Pull requests</strong>, then <strong>New pull request</strong>.</li>
+<li>Set the <strong>base</strong> branch to <code>development</code> and the <strong>compare</strong> branch to <code>main</code>.</li>
+<li>Click <strong>Create pull request</strong>, add a short title (e.g. <code>Merge main into development</code>), and submit.</li>
+<li>Once CI passes, merge the PR.</li>
+</ol>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before starting a release, make sure all work intended for this version has been merged into the <code>development</code> branch and that CI is passing.</p>
+<h2 id="steps">Steps</h2>
+<h3 id="1-merge-dependabot-prs-into-main">1. Merge Dependabot PRs into main</h3>
+<p>Review any open Dependabot pull requests and merge the relevant ones into <code>main</code> before continuing.</p>
+<h3 id="2-merge-development-into-main">2. Merge development into main</h3>
+<p>Open a pull request to merge the <code>development</code> branch into <code>main</code>. Once CI passes and the PR is approved, merge it.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Merging <code>development</code> into <code>main</code> deletes the <code>development</code> branch. The
+<code>recreate-development-branch.yml</code> workflow recreates it from <code>main</code> right away. Check the
+<a href="https://github.com/ait-testbed/logreach/actions">Actions tab</a> that it ran. If it failed, recreate it by hand:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>main
+git<span class="w"> </span>pull
+git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>development
+git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>development
+</code></pre></div>
+<p>or create <code>development</code> from <code>main</code> in the GitHub UI.</p>
+</div>
+<h3 id="3-determine-the-new-version-number">3. Determine the new version number</h3>
+<p><code>Logreach</code> follows <a href="https://semver.org/">Semantic Versioning</a> (<code>MAJOR.MINOR.PATCH</code>):</p>
+<ul>
+<li><strong>Patch</strong> (<code>0.3.x</code>): bug fixes, updates/correction to documentation and dependabot updates.</li>
+<li><strong>Minor</strong> (<code>0.x.0</code>): new features with backwards-compatible functionality. No breaking changes. Reset the patch number to <code>0</code>.</li>
+<li><strong>Major</strong> (<code>x.0.0</code>): breaking changes. Reset both minor and patch numbers to <code>0</code>.</li>
+</ul>
+<h3 id="4-bump-the-version-number">4. Bump the version number</h3>
+<p>Create a new branch from <code>main</code> and update the version string in <code>src/logreach/metadata.py</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">__date__</span> <span class="o">=</span> <span class="s1">'YYYY/MM/DD'</span>  <span class="c1"># set to the release date</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">'0.X.Y'</span>  <span class="c1"># set to the new release version</span>
+</code></pre></div>
+<p>The version here must match the tag you will create in step 5 (e.g. version <code>0.4.0</code> corresponds to tag <code>v0.4.0</code>).</p>
+<p>Also make sure <code>uv.lock</code> is up to date:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>lock
+</code></pre></div>
+<p>Commit any changes, push the branch, and open a pull request against <code>main</code>. Once CI passes, merge it.</p>
+<h3 id="5-create-a-github-release">5. Create a GitHub release</h3>
+<p>Go to the <a href="https://github.com/ait-testbed/logreach/releases">Releases page</a> and click <strong>Draft a new release</strong>.</p>
+<ul>
+<li>Set the tag to <code>vX.Y.Z</code> (e.g. <code>v0.4.0</code>), targeting the <code>main</code> branch. GitHub will create the tag on publish.</li>
+<li>Set the release title to the version string (e.g. <code>v0.4.0</code>).</li>
+<li>Click <strong>Generate release notes</strong> to populate the changelog automatically.</li>
+<li>Review the generated release notes and adjust if needed.</li>
+<li>Click <strong>Publish release</strong>.</li>
+</ul>
+<h3 id="6-check-automatically-triggered-workflows">6. Check automatically triggered workflows</h3>
+<p>Publishing the release triggers the following GitHub Actions workflows automatically:</p>
+<ul>
+<li><strong>Publish Docs</strong> (<code>publish-docs.yml</code>): deploys a new versioned copy of the documentation and updates the <code>latest</code> alias.</li>
+<li><strong>Upload Python Package</strong> (<code>python-publish.yml</code>): checks the tag matches the package version and publishes it to
+  <a href="https://pypi.org/project/logreach/">PyPI</a>. A version can be uploaded only once: a mistake needs a new version.</li>
+</ul>
+<p>Logreach is not published as a Docker image.</p>
+<p>Monitor the <a href="https://github.com/ait-testbed/logreach/actions">Actions tab</a> to confirm all workflows complete successfully.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The workflow uses PyPI trusted publishing, so no API token is stored in GitHub</p>
+</div>
+<h3 id="7-merge-main-back-into-development">7. Merge main back into development</h3>
+<p><code>development</code> was recreated in step 2, before the version bump landed on <code>main</code>. Merge <code>main</code>
+back into <code>development</code> so it has the new version and <code>uv.lock</code>, following the steps in
+<a href="#keeping-dependencies-up-to-date">Keeping dependencies up to date</a>.</p>
+<p>The <code>development</code> branch is now ready for the next iteration of work.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../development/" class="btn btn-neutral float-left" title="Development"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ait-testbed/logreach" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../development/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

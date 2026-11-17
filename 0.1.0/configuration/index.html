@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://ait-testbed.github.io/logreach/0.1.0/configuration/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Configuration - Logreach</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Configuration";
+        var mkdocs_page_input_path = "configuration.md";
+        var mkdocs_page_url = "/logreach/0.1.0/configuration/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Logreach
+        </a>
+        <div class="version">
+          {'provider': 'mike'}
+        </div><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Configuration</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#ignore_listtxt-files-to-skip">ignore_list.txt: files to skip</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#logtypesjson-set-the-type-of-a-file">logtypes.json: set the type of a file</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Contributing</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../contribution/">Git Workflow</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../development/">Development</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Maintainers</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../release/">Release Process</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Logreach</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guide</li>
+      <li class="breadcrumb-item active">Configuration</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ait-testbed/logreach/edit/master/docs/configuration.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="configuration">Configuration</h1>
+<p>Logreach reads two files from the current directory and creates them empty if they are missing.
+<code>--ignore-file</code> and <code>--types-file</code> choose other paths; <code>''</code> turns a file off.</p>
+<h2 id="ignore_listtxt-files-to-skip"><code>ignore_list.txt</code>: files to skip</h2>
+<p>One regular expression per line, matched against the full path. Blank lines and lines starting
+with <code>#</code> are skipped. The list only applies when <code>PATH</code> is a directory; a file named directly is
+always read.</p>
+<div class="highlight"><pre><span></span><code># not logfiles
+README\Z
+wtmp\Z
+# multi-line formats
+apt/history\.log\Z
+suricata/stats\.log\Z
+</code></pre></div>
+<p>Files with the extensions in <code>--ignored-extensions</code> are skipped as well (default
+<code>.gz,.xz,.conf,.journal,.journal~</code>; <code>''</code> for none).</p>
+<h2 id="logtypesjson-set-the-type-of-a-file"><code>logtypes.json</code>: set the type of a file</h2>
+<p><a href="https://jsonlines.org/">JSON Lines</a>: one object per line. A file listed here is read with this
+config instead of being detected. <code>logfile_path</code> must match the path exactly as logreach builds
+it from <code>PATH</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"logfile_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"gather/logs/zm/web_php.log"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"syslog"</span><span class="p">,</span><span class="w"> </span><span class="nt">"datetimeregex"</span><span class="p">:</span><span class="w"> </span><span class="s2">"\\A(.+?UTC)"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"logfile_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"gather/logs/nclog/audit.log"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"json"</span><span class="p">,</span><span class="w"> </span><span class="nt">"datetimekey"</span><span class="p">:</span><span class="w"> </span><span class="s2">"time"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"logfile_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"gather/logs/suricata/suricata.log"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"syslog"</span><span class="p">,</span><span class="w"> </span><span class="nt">"dayfirst"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"logfile_path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"gather/logs/winhost/app.log"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"syslog"</span><span class="p">,</span><span class="w"> </span><span class="nt">"timezone"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Europe/Vienna"</span><span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>logfile_path</code></td>
+<td>yes</td>
+<td>path of the logfile</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>yes</td>
+<td><code>syslog</code>, <code>audit</code>, <code>access</code> or <code>json</code></td>
+</tr>
+<tr>
+<td><code>datetimeregex</code></td>
+<td>no</td>
+<td>regex whose first group is the timestamp (not for <code>json</code>)</td>
+</tr>
+<tr>
+<td><code>datetimekey</code></td>
+<td>for <code>json</code></td>
+<td>key that holds the timestamp</td>
+</tr>
+<tr>
+<td><code>dayfirst</code></td>
+<td>no</td>
+<td><code>true</code> reads dates like <code>1/9/2026</code> as 1 September</td>
+</tr>
+<tr>
+<td><code>timezone</code></td>
+<td>no</td>
+<td>timezone of timestamps without one in this file, e.g. <code>Europe/Vienna</code>; overrides <code>--timezone</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>--type</code> on the command line takes precedence over this file. <code>logreach PATH --check --interactive</code>
+asks for the type of every file that is not detected and appends the answers here (see
+<a href="../usage/">Usage</a>); if a path is listed twice, the last line wins.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../installation/" class="btn btn-neutral float-left" title="Installation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../usage/" class="btn btn-neutral float-right" title="Usage">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ait-testbed/logreach" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../installation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../usage/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
