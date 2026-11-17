@@ -12,7 +12,7 @@ Requires Python >= 3.14.
 From PyPI:
 
 ```bash
-pipx install logreach    # or: uv tool install logreach
+uv tool install logreach # or pip install logreach   
 logreach --help
 ```
 
