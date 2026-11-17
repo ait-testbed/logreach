@@ -9,7 +9,7 @@ from dateutil.parser import ParserError, parse
 from rich import print
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.api import FileEvent, FileStatus, Logreach, Problems
+from logreach.api import FileEvent, FileStatus, Logreach, Problems, printable
 from logreach.exceptions import LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.schemas.logfileconfig import LogType
@@ -44,7 +44,7 @@ def print_logline(logline: Logline) -> None:
 def problem_report(problems: Problems, max_problems: int) -> str:
     """List at most max_problems problems and count the rest."""
     shown = problems.messages[:max_problems]
-    report = ['', 'Problems found:', *(f'  {problem}' for problem in shown)]
+    report = ['', 'Problems found:', *(f'  {printable(problem)}' for problem in shown)]
     if len(problems.messages) > len(shown):
         report.append(f'  ... and {len(problems.messages) - len(shown)} more (see --max-problems)')
     report.append(f'{problems.unparsed_lines} lines without timestamp, '
@@ -144,7 +144,7 @@ def main() -> None:
                             ignores_file=args.ignore_file, ignored_extensions=ignored_extensions,
                             on_undetermined=ask_logtype if args.interactive else None)
     except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
-        sys.stderr.write(f'logreach: {e}\n')
+        sys.stderr.write(f'logreach: {printable(str(e))}\n')
         sys.exit(2)
 
     try:
@@ -152,9 +152,9 @@ def main() -> None:
             if isinstance(item, FileEvent):
                 # plain stdout instead of rich, which would wrap long paths
                 if args.check and item.status == FileStatus.READ:
-                    sys.stdout.write(f'{item.path}: {item.message}\n')
+                    sys.stdout.write(printable(f'{item.path}: {item.message}') + '\n')
                 elif args.check and item.status == FileStatus.SKIPPED:
-                    sys.stdout.write(f'{item.path}: skipped ({item.message})\n')
+                    sys.stdout.write(printable(f'{item.path}: skipped ({item.message})') + '\n')
             elif not args.check and item.timestamp is not None:  # lines without timestamp are reported
                 print_logline(item)
     except KeyboardInterrupt:

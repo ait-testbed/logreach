@@ -22,6 +22,18 @@ def shortened(text: str) -> str:
     return text if len(text) <= MAX_SHOWN_CHARS else text[:MAX_SHOWN_CHARS] + '…'
 
 
+def printable(text: str) -> str:
+    """Escape control characters, e.g. ESC as \\x1b: a log line or file name
+    could else send the terminal commands.
+
+    Tabs are harmless and stay.
+    """
+    if text.isprintable():
+        return text
+    return ''.join(char if char == '\t' or char.isprintable() else char.encode('unicode_escape').decode()
+                   for char in text)
+
+
 class FileStatus(Enum):
     READ = 'read'  # its lines follow
     SKIPPED = 'skipped'  # ignored or empty, no problem
