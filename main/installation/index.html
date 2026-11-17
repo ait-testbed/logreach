@@ -51,7 +51,9 @@
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">Installation</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#uv">uv</a>
+    <li class="toctree-l2"><a class="reference internal" href="#from-pypi">From PyPI</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#from-source">From source</a>
     </li>
     </ul>
                   </li>
@@ -101,12 +103,16 @@
               
                 <h1 id="installation">Installation</h1>
 <p>Requires Python &gt;= 3.14.</p>
-<h2 id="uv">uv</h2>
+<h2 id="from-pypi">From PyPI</h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>logreach<span class="w">   </span><span class="c1"># or: pipx install logreach  </span>
+logreach<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="from-source">From source</h2>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ait-testbed/logreach.git
 <span class="nb">cd</span><span class="w"> </span>logreach
-uv<span class="w"> </span>sync
 uv<span class="w"> </span>run<span class="w"> </span>logreach<span class="w"> </span>--help
 </code></pre></div>
+<p>When running from source, prefix the <code>logreach</code> commands in these docs with <code>uv run</code>.</p>
               
             </div>
           </div><footer>

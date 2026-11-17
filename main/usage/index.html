@@ -112,8 +112,8 @@
                 <h1 id="usage">Usage</h1>
 <div class="highlight"><pre><span></span><code>logreach<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--type<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--begin<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--end<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span>...
 </code></pre></div>
-<p><code>PATH</code> is a logfile or a directory, which is walked recursively. With <code>uv</code>, prefix the commands
-with <code>uv run</code>. <code>logreach --help</code> lists all options.</p>
+<p><code>PATH</code> is a logfile or a directory, which is walked recursively. When running from source, prefix
+the commands with <code>uv run</code>. <code>logreach --help</code> lists all options.</p>
 <h2 id="examples">Examples</h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># all lines of one logfile, type detected automatically</span>
 logreach<span class="w"> </span>/var/log/syslog
@@ -127,8 +127,14 @@ logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span 
 <span class="c1"># only the lines in the window that match any of the regexes (--ignore-case for any case)</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'password'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'sudo:.*'</span>
 
+<span class="c1"># one line per log line, "timestamp path:lineno:line", e.g. to sort the lines of all files by time</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--plain<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+
 <span class="c1"># only show the detected type of each file and the problems found</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check
+
+<span class="c1"># also show on stderr why each file gets its type (which types were tried and why they failed)</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--debug
 
 <span class="c1"># also ask for the type of each file that is not detected, and save the answers</span>
 logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--interactive

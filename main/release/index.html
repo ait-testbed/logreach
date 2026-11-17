@@ -158,7 +158,8 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
 </ul>
 <h3 id="4-bump-the-version-number">4. Bump the version number</h3>
 <p>Create a new branch from <code>main</code> and update the version string in <code>src/logreach/metadata.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">__version__</span> <span class="o">=</span> <span class="s1">'0.X.Y'</span>  <span class="c1"># set to the new release version</span>
+<div class="highlight"><pre><span></span><code><span class="n">__date__</span> <span class="o">=</span> <span class="s1">'YYYY/MM/DD'</span>  <span class="c1"># set to the release date</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">'0.X.Y'</span>  <span class="c1"># set to the new release version</span>
 </code></pre></div>
 <p>The version here must match the tag you will create in step 5 (e.g. version <code>0.4.0</code> corresponds to tag <code>v0.4.0</code>).</p>
 <p>Also make sure <code>uv.lock</code> is up to date:</p>
@@ -175,12 +176,18 @@ git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span
 <li>Click <strong>Publish release</strong>.</li>
 </ul>
 <h3 id="6-check-automatically-triggered-workflows">6. Check automatically triggered workflows</h3>
-<p>Publishing the release triggers the following GitHub Actions workflow automatically:</p>
+<p>Publishing the release triggers the following GitHub Actions workflows automatically:</p>
 <ul>
 <li><strong>Publish Docs</strong> (<code>publish-docs.yml</code>): deploys a new versioned copy of the documentation and updates the <code>latest</code> alias.</li>
+<li><strong>Upload Python Package</strong> (<code>python-publish.yml</code>): checks the tag matches the package version and publishes it to
+  <a href="https://pypi.org/project/logreach/">PyPI</a>. A version can be uploaded only once: a mistake needs a new version.</li>
 </ul>
-<p>Logreach is not published to PyPI or as a Docker image yet.</p>
-<p>Monitor the <a href="https://github.com/ait-testbed/logreach/actions">Actions tab</a> to confirm it completes successfully.</p>
+<p>Logreach is not published as a Docker image.</p>
+<p>Monitor the <a href="https://github.com/ait-testbed/logreach/actions">Actions tab</a> to confirm all workflows complete successfully.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The workflow uses PyPI trusted publishing, so no API token is stored in GitHub</p>
+</div>
 <h3 id="7-merge-main-back-into-development">7. Merge main back into development</h3>
 <p><code>development</code> was recreated in step 2, before the version bump landed on <code>main</code>. Merge <code>main</code>
 back into <code>development</code> so it has the new version and <code>uv.lock</code>, following the steps in
