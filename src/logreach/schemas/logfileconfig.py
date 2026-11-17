@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, tzinfo
@@ -9,6 +10,8 @@ from typing import Pattern
 from dateutil.parser import ParserError, parse
 
 from logreach.exceptions import NoTimestamp
+
+logger = logging.getLogger(__name__)
 
 
 class LogType(Enum):
@@ -108,6 +111,7 @@ class RegexLogConfig(LogConfig):
         except ParserError:
             if re.match(r'\A\d+\.\d+\Z', raw_timestamp):
                 self._unix_timestamp = True
+                logger.debug('%s: timestamps are Unix epochs from %r on', self.logfile_path, raw_timestamp)
                 return datetime.fromtimestamp(float(raw_timestamp), timezone.utc)
         return None
 

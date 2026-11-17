@@ -1,6 +1,7 @@
 """Python API: what the logreach command does, without printing, exiting or
 asking questions."""
 
+import logging
 import os
 import re
 from collections.abc import Callable, Iterable, Iterator
@@ -13,6 +14,8 @@ from logreach.exceptions import FILE_ERRORS, LogTypeError
 from logreach.logfile import Logfile, config_factory
 from logreach.schemas.logfileconfig import LogConfig, LogType
 from logreach.schemas.logline import Logline
+
+logger = logging.getLogger(__name__)
 
 # characters of a log line shown in a problem message; the line number leads to the rest
 MAX_SHOWN_CHARS = 200
@@ -203,6 +206,7 @@ class Logreach:
         else:
             skip_reason = None
         if skip_reason:
+            logger.debug('%s: skipped: %s', path, skip_reason)
             yield FileEvent(path, FileStatus.SKIPPED, skip_reason)
             return
 
@@ -220,6 +224,7 @@ class Logreach:
                 return
             config = self.make_config(path)
 
+        logger.debug('%s: reading as %s', path, config.describe())
         yield FileEvent(path, FileStatus.READ, config.describe(), config)
         with Logfile(config) as logfile:
             try:

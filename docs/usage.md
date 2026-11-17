@@ -28,6 +28,9 @@ logreach gather/logs --begin '2026-09-01 14:00' --plain | sort
 # only show the detected type of each file and the problems found
 logreach gather/logs --check
 
+# also show on stderr why each file gets its type (which types were tried and why they failed)
+logreach gather/logs --check --debug
+
 # also ask for the type of each file that is not detected, and save the answers
 logreach gather/logs --check --interactive
 

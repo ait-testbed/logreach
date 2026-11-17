@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import re
 import sys
@@ -43,6 +44,25 @@ def plain_line(logline: Logline) -> str:
     timestamp = logline.timestamp.astimezone(UTC).isoformat() if logline.timestamp else '-'
     line: str = printable(f'{timestamp} {logline.filename}:{logline.lineno}:{logline.raw.rstrip("\r\n")}')
     return line + '\n'
+
+
+class PrintableFormatter(logging.Formatter):
+    """--debug messages contain file names and log text: escape them like
+    the rest of the output."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        message: str = printable(super().format(record))
+        return message
+
+
+def enable_debug() -> None:
+    """Print the debug messages of logreach (not of other libraries) to stderr,
+    so stdout keeps only the output."""
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(PrintableFormatter('debug: %(message)s'))
+    logger = logging.getLogger('logreach')
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def problem_report(problems: Problems, max_problems: int) -> str:
@@ -95,6 +115,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--plain', action='store_true',
                         help='print each line as "timestamp path:lineno:line", for piping into grep, sort or '
                              'cut, instead of the Logline repr')
+    parser.add_argument('--debug', action='store_true',
+                        help='print on stderr why each file gets its type or is skipped')
     parser.add_argument('--check', action='store_true',
                         help="show each file's detected type instead of its lines, to find problems fast")
     parser.add_argument('-i', '--interactive', action='store_true',
@@ -140,6 +162,8 @@ def ask_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> bool:
 
 def main() -> None:
     args = parse_args()
+    if args.debug:
+        enable_debug()
     ignored_extensions = [extension.strip() for extension in args.ignored_extensions.split(',')
                           if extension.strip()]
     try:
