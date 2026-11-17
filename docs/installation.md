@@ -5,7 +5,7 @@ Requires Python >= 3.14.
 ## From PyPI
 
 ```bash
-uv tool install logreach   # or: pipx install logreach  
+uv tool install logreach   # or: pip install logreach  
 logreach --help
 ```
 
