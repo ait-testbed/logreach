@@ -38,6 +38,9 @@ uv run logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:
 # every logfile below a directory
 uv run logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
+# one line per log line, "timestamp path:lineno:line" (timestamp in UTC), e.g. to sort all files by time
+uv run logreach gather/logs --begin '2026-09-01 14:00' --plain | sort
+
 # only show the detected type of each file and the problems found
 uv run logreach gather/logs --check
 
