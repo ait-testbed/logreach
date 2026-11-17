@@ -8,18 +8,7 @@ license-files = ["LICENSE.md"]
 authors = [{ name = "AIT Austrian Institute of Technology GmbH", email = "aecid@ait.ac.at" }]
 maintainers = [{ name = "Wolfgang Hotwagner", email = "aecid@ait.ac.at" }]
 keywords = ["logs", "log analysis", "forensics", "syslog", "auditd", "timestamp", "filter"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Intended Audience :: Information Technology",
-    "Intended Audience :: System Administrators",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
-    "Topic :: Security",
-    "Topic :: System :: Logging",
-    "Typing :: Typed",
-]
+
 dependencies = [
     "python-dateutil>=2.9.0.post0",
     "rich>=15.0.0",
