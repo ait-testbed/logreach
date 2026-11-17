@@ -2,7 +2,7 @@ import argparse
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dateutil.parser import ParserError, parse
@@ -34,11 +34,15 @@ def print_logline(logline: Logline) -> None:
     print(logline)
 
 
-# def print_logline_with_timestamp(logline: Logline) -> None:
-#     """Not used yet: can replace print_logline to make output sortable for
-#     example."""
-#     print(f'{logline.timestamp.isoformat()} {logline.filename}:{logline.lineno}:'
-#           f'{logline.raw.rstrip("\r\n")}\n')
+def plain_line(logline: Logline) -> str:
+    """--plain: one line 'timestamp path:lineno:line' for grep, sort or cut;
+    control characters are escaped.
+
+    The timestamp is in UTC.
+    """
+    timestamp = logline.timestamp.astimezone(UTC).isoformat() if logline.timestamp else '-'
+    line: str = printable(f'{timestamp} {logline.filename}:{logline.lineno}:{logline.raw.rstrip("\r\n")}')
+    return line + '\n'
 
 
 def problem_report(problems: Problems, max_problems: int) -> str:
@@ -88,6 +92,9 @@ def parse_args() -> argparse.Namespace:
                         help='do not list the problems at the end; the exit code still shows them')
     parser.add_argument('--fail-fast', action='store_true',
                         help='stop at the first problem instead of reporting all problems at the end')
+    parser.add_argument('--plain', action='store_true',
+                        help='print each line as "timestamp path:lineno:line", for piping into grep, sort or '
+                             'cut, instead of the Logline repr')
     parser.add_argument('--check', action='store_true',
                         help="show each file's detected type instead of its lines, to find problems fast")
     parser.add_argument('-i', '--interactive', action='store_true',
@@ -156,7 +163,10 @@ def main() -> None:
                 elif args.check and item.status == FileStatus.SKIPPED:
                     sys.stdout.write(printable(f'{item.path}: skipped ({item.message})') + '\n')
             elif not args.check and item.timestamp is not None:  # lines without timestamp are reported
-                print_logline(item)
+                if args.plain:
+                    sys.stdout.write(plain_line(item))
+                else:
+                    print_logline(item)
     except KeyboardInterrupt:
         sys.exit(1)
 

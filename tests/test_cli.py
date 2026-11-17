@@ -309,6 +309,22 @@ def test_grep_prints_only_matching_lines(make_logs, run_logreach, extra_args, li
 
 # --- --check
 
+def test_plain_prints_one_line_per_logline(make_logs, run_logreach, capsys):
+    logs = make_logs({'syslog': SYSLOG_1408 + 'Sep  1 14:09:00 host app: \x1b[31mred\tok\n'})
+    printed, exit_code = run_logreach(logs / 'syslog', '--plain', '--begin', '2026-09-01')
+    assert printed == []  # not the repr
+    assert exit_code == 0
+    assert capsys.readouterr().out == (
+        f'2026-09-01T14:08:07+00:00 {logs / "syslog"}:1:Sep  1 14:08:07 host app: x\n'
+        f'2026-09-01T14:09:00+00:00 {logs / "syslog"}:2:Sep  1 14:09:00 host app: \\x1b[31mred\tok\n')
+
+
+def test_plain_prints_timestamps_in_utc(make_logs, run_logreach, capsys):
+    logs = make_logs({'syslog': SYSLOG_1408})
+    run_logreach(logs, '--plain', '--timezone', 'Europe/Vienna', '--begin', '2026-01-01')
+    assert capsys.readouterr().out.startswith('2026-09-01T12:08:07+00:00 ')  # 14:08 in Vienna, summer time
+
+
 def test_check_shows_types_instead_of_lines(make_logs, run_logreach, capsys):
     logs = make_logs({'syslog': SYSLOG, 'eve.json': EVE_JSON})
     printed, exit_code = run_logreach(logs, '--check')
