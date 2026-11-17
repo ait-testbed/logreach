@@ -4,8 +4,8 @@
 logreach PATH [--type ...] [--begin ...] [--end ...] [--check] ...
 ```
 
-`PATH` is a logfile or a directory, which is walked recursively. With `uv`, prefix the commands
-with `uv run`. `logreach --help` lists all options.
+`PATH` is a logfile or a directory, which is walked recursively. When running from source, prefix
+the commands with `uv run`. `logreach --help` lists all options.
 
 ## Examples
 
