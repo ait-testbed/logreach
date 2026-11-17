@@ -1,0 +1,32 @@
+# Publishes to PyPI via trusted publishing.
+
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # no python-version given: uv picks up 3.14 from .python-version
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6.6.0
+
+      - name: Build package
+        run: uv build
+
+      - name: Check release tag matches package version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          ls dist/*-"$version"-*.whl || { echo "tag $GITHUB_REF_NAME does not match the package version"; exit 1; }
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -55,6 +55,7 @@ Open a pull request to merge the `development` branch into `main`. Once CI passe
 Create a new branch from `main` and update the version string in `src/logreach/metadata.py`:
 
 ```python
+__date__ = 'YYYY/MM/DD'  # set to the release date
 __version__ = '0.X.Y'  # set to the new release version
 ```
 
@@ -80,13 +81,19 @@ Go to the [Releases page](https://github.com/ait-testbed/logreach/releases) and 
 
 ### 6. Check automatically triggered workflows
 
-Publishing the release triggers the following GitHub Actions workflow automatically:
+Publishing the release triggers the following GitHub Actions workflows automatically:
 
 - **Publish Docs** (`publish-docs.yml`): deploys a new versioned copy of the documentation and updates the `latest` alias.
+- **Upload Python Package** (`python-publish.yml`): checks the tag matches the package version and publishes it to
+  [PyPI](https://pypi.org/project/logreach/). A version can be uploaded only once: a mistake needs a new version.
 
-Logreach is not published to PyPI or as a Docker image yet.
+Logreach is not published as a Docker image.
 
-Monitor the [Actions tab](https://github.com/ait-testbed/logreach/actions) to confirm it completes successfully.
+Monitor the [Actions tab](https://github.com/ait-testbed/logreach/actions) to confirm all workflows complete successfully.
+
+!!! note
+
+    The workflow uses PyPI trusted publishing, so no API token is stored in GitHub
 
 ### 7. Merge main back into development
 
