@@ -3,18 +3,28 @@
 Reach into collected log dumps: `logreach` detects the type of each logfile (syslog, audit,
 access or JSON) and prints the lines within a time window.
 
-> [!IMPORTANT]
-> Logreach is an early proof of concept and under development.
+> **Important:** Logreach is an early proof of concept and under development.
 
 ## Installation
 
 Requires Python >= 3.14.
+
+From PyPI:
+
+```bash
+pipx install logreach    # or: uv tool install logreach
+logreach --help
+```
+
+From source:
 
 ```bash
 git clone https://github.com/ait-testbed/logreach.git
 cd logreach
 uv run logreach --help
 ```
+
+When running from source, prefix the commands below with `uv run`.
 
 ## Usage
 
@@ -54,11 +64,11 @@ Both are read from the current directory and created empty if missing:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/ait-testbed/logreach/blob/main/CONTRIBUTING.md).
 
 ## Security
-see [SECURITY.md](SECURITY.md).
+see [SECURITY.md](https://github.com/ait-testbed/logreach/blob/main/SECURITY.md).
 
 ## License
 
-[EUPL-1.2](LICENSE.md)
+[EUPL-1.2](https://github.com/ait-testbed/logreach/blob/main/LICENSE.md)
