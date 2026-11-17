@@ -89,7 +89,8 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
     Returns what was done with the file.
     """
     types = analyzer.types
-    assert types is not None, '--interactive requires a types file'
+    if types is None:
+        raise ValueError('--interactive requires a types file')
     # stderr: stdout keeps only the --check lines; no markup or emoji: log lines and paths show as they are
     console = Console(stderr=True, markup=False, highlight=False, emoji=False)
     console.print('\n' + printable(str(error)))
