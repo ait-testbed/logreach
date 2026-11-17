@@ -74,10 +74,17 @@ def iter_logfiles(path: str, analyzer: Analyzer) -> Iterator[tuple[str, str | No
     if not os.path.isdir(path):
         yield path, None  # named explicitly, so the ignore list does not apply
         return
-    for root, _dirs, files in os.walk(path, followlinks=True):
+    # a dump may hold symlinks: linked directories are not entered (no loops), linked files outside path
+    # are skipped (no reading e.g. /etc/shadow)
+    top = os.path.realpath(path)
+    for root, _dirs, files in os.walk(path):
         for file in files:
             filepath = os.path.join(root, file)
-            yield filepath, analyzer.ignores.ignore_reason(filepath)
+            target = os.path.realpath(filepath)
+            if os.path.islink(filepath) and os.path.commonpath([top, target]) != top:
+                yield filepath, f'symlink to {target} outside {path}'
+            else:
+                yield filepath, analyzer.ignores.ignore_reason(filepath)
 
 
 class Logreach:
