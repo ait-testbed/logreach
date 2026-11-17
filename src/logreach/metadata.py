@@ -1,4 +1,4 @@
-__authors__ = ['Wolfgang Hotwagner']
+__authors__ = ['Wolfgang Hotwagner', "Thorina Boenke"]
 __contact__ = 'aecid@ait.ac.at'
 __copyright__ = 'Copyright 2026, AIT Austrian Institute of Technology GmbH'
 __date__ = '2026/11/17'
@@ -8,7 +8,7 @@ __website__ = 'https://aecid.ait.ac.at'
 __license__ = 'EUPL-1.2'
 __maintainer__ = 'Wolfgang Hotwagner'
 __status__ = 'Development'
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __version_string__ = (
     f'(Austrian Institute of Technology)\t'
     f'{__website__}\tVersion: {__version__}')
