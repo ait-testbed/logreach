@@ -10,7 +10,7 @@ from dateutil.parser import ParserError, parse
 from rich import print
 
 from logreach.analyzer import DEFAULT_IGNORES_FILE, DEFAULT_TYPES_FILE, Analyzer
-from logreach.api import FileEvent, FileStatus, Logreach, Problems, printable
+from logreach.api import FileEvent, FileStatus, Logreach, Problems
 from logreach.exceptions import LogreachError, LogTypeError
 from logreach.interactive import Answer, ask_and_save_logtype
 from logreach.schemas.logfileconfig import LogType
@@ -36,30 +36,19 @@ def print_logline(logline: Logline) -> None:
 
 
 def plain_line(logline: Logline) -> str:
-    """--plain: one line 'timestamp path:lineno:line' for grep, sort or cut;
-    control characters are escaped.
+    """--plain: one line 'timestamp path:lineno:line' for grep, sort or cut.
 
     The timestamp is in UTC.
     """
     timestamp = logline.timestamp.astimezone(UTC).isoformat() if logline.timestamp else '-'
-    line: str = printable(f'{timestamp} {logline.filename}:{logline.lineno}:{logline.raw.rstrip("\r\n")}')
-    return line + '\n'
-
-
-class PrintableFormatter(logging.Formatter):
-    """--debug messages contain file names and log text: escape them like
-    the rest of the output."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        message: str = printable(super().format(record))
-        return message
+    return f'{timestamp} {logline.filename}:{logline.lineno}:{logline.raw.rstrip("\r\n")}\n'
 
 
 def enable_debug() -> None:
     """Print the debug messages of logreach (not of other libraries) to stderr,
     so stdout keeps only the output."""
     handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(PrintableFormatter('debug: %(message)s'))
+    handler.setFormatter(logging.Formatter('debug: %(message)s'))
     logger = logging.getLogger('logreach')
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
@@ -68,7 +57,7 @@ def enable_debug() -> None:
 def problem_report(problems: Problems, max_problems: int) -> str:
     """List at most max_problems problems and count the rest."""
     shown = problems.messages[:max_problems]
-    report = ['', 'Problems found:', *(f'  {printable(problem)}' for problem in shown)]
+    report = ['', 'Problems found:', *(f'  {problem}' for problem in shown)]
     if len(problems.messages) > len(shown):
         report.append(f'  ... and {len(problems.messages) - len(shown)} more (see --max-problems)')
     report.append(f'{problems.unparsed_lines} lines without timestamp, '
@@ -175,7 +164,7 @@ def main() -> None:
                             ignores_file=args.ignore_file, ignored_extensions=ignored_extensions,
                             on_undetermined=ask_logtype if args.interactive else None)
     except LogreachError as e:  # a broken types file: nothing can be read right, so stop before reading
-        sys.stderr.write(f'logreach: {printable(str(e))}\n')
+        sys.stderr.write(f'logreach: {e}\n')
         sys.exit(2)
 
     try:
@@ -183,9 +172,9 @@ def main() -> None:
             if isinstance(item, FileEvent):
                 # plain stdout instead of rich, which would wrap long paths
                 if args.check and item.status == FileStatus.READ:
-                    sys.stdout.write(printable(f'{item.path}: {item.message}') + '\n')
+                    sys.stdout.write(f'{item.path}: {item.message}\n')
                 elif args.check and item.status == FileStatus.SKIPPED:
-                    sys.stdout.write(printable(f'{item.path}: skipped ({item.message})') + '\n')
+                    sys.stdout.write(f'{item.path}: skipped ({item.message})\n')
             elif not args.check and item.timestamp is not None:  # lines without timestamp are reported
                 if args.plain:
                     sys.stdout.write(plain_line(item))

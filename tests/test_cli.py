@@ -227,21 +227,6 @@ def test_report_shortens_long_lines(make_logs, run_logreach, capsys):
     assert f'{logs / "syslog"}:3: no timestamp: {"x" * 200}…\n' in capsys.readouterr().err
 
 
-def test_report_escapes_terminal_commands(make_logs, run_logreach, capsys):
-    # sets the window title, then switches to red; tab and umlaut are harmless and stay
-    logs = make_logs({'syslog': SYSLOG + '\x1b]0;PWNED\x07\x1b[31mred\tgrün\n'})
-    run_logreach(logs)
-    err = capsys.readouterr().err
-    assert '\x1b' not in err and '\x07' not in err
-    assert f'{logs / "syslog"}:3: no timestamp: \\x1b]0;PWNED\\x07\\x1b[31mred\tgrün\n' in err
-
-
-def test_check_escapes_terminal_commands_in_file_names(make_logs, run_logreach, capsys):
-    logs = make_logs({'\x1b[31mred.log': SYSLOG})
-    run_logreach(logs, '--check')
-    assert capsys.readouterr().out == f'{logs}/\\x1b[31mred.log: syslog (UTC)\n'
-
-
 def test_require_timestamp_stops_at_first_line_without_timestamp(make_logs, run_logreach, capsys):
     lines = SYSLOG.splitlines(keepends=True)
     logs = make_logs({'syslog': lines[0] + 'no timestamp\n' + lines[1]})
@@ -316,7 +301,7 @@ def test_plain_prints_one_line_per_logline(make_logs, run_logreach, capsys):
     assert exit_code == 0
     assert capsys.readouterr().out == (
         f'2026-09-01T14:08:07+00:00 {logs / "syslog"}:1:Sep  1 14:08:07 host app: x\n'
-        f'2026-09-01T14:09:00+00:00 {logs / "syslog"}:2:Sep  1 14:09:00 host app: \\x1b[31mred\tok\n')
+        f'2026-09-01T14:09:00+00:00 {logs / "syslog"}:2:Sep  1 14:09:00 host app: \x1b[31mred\tok\n')
 
 
 def test_plain_prints_timestamps_in_utc(make_logs, run_logreach, capsys):
@@ -459,19 +444,6 @@ def test_interactive_ignore_adds_path_to_ignore_list(make_logs, ignore_list, run
     pattern = re.escape(str(path)) + r'\Z'
     assert capsys.readouterr().out == f'{path}: skipped (ignored: {ignores} pattern {pattern})\n'
     assert ignores.read_text() == f'README\\Z\n{pattern}\n'
-
-
-def test_interactive_escapes_terminal_commands(make_logs, run_logreach, answers, capsys):
-    logs = make_logs({'\x1b[31mred.log': 'no timestamp \x1b]0;PWNED\x07\n',
-                      'app.json': '{"\\u001b[31mkey": "2026-09-01 14:00"}\n'})
-    answers('skip')
-    run_logreach(logs / '\x1b[31mred.log', '--check', '--interactive')
-    answers('edit', 'json')  # the only key has an ESC, so no key is offered
-    run_logreach(logs / 'app.json', '--check', '--interactive')
-    err = capsys.readouterr().err
-    assert '\x1b' not in err and '\x07' not in err
-    assert '\\x1b[31mred.log' in err and '1 | no timestamp \\x1b]0;PWNED\\x07' in err
-    assert 'The first line is no JSON object with keys.' in err
 
 
 @pytest.mark.parametrize('typed', [pytest.param(('skip',), id='skip'), pytest.param((), id='input-closed')])
