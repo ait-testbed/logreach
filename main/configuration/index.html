@@ -116,7 +116,7 @@ apt/history\.log\Z
 suricata/stats\.log\Z
 </code></pre></div>
 <p>Files with the extensions in <code>--ignored-extensions</code> are skipped as well (default
-<code>.gz,.xz,.conf,.journal,.journal~</code>; <code>''</code> for none).</p>
+<code>.xz,.conf,.journal,.journal~</code>; <code>''</code> for none). gzip files are read, not skipped: add <code>.gz</code> to skip them.</p>
 <h2 id="logtypesjson-set-the-type-of-a-file"><code>logtypes.json</code>: set the type of a file</h2>
 <p><a href="https://jsonlines.org/">JSON Lines</a>: one object per line. A file listed here is read with this
 config instead of being detected. <code>logfile_path</code> must match the path exactly as logreach builds

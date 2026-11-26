@@ -184,7 +184,8 @@ the log lines: the detected type and timezone, or why the file was skipped.</p>
 <div class="highlight"><pre><span></span><code>gather/logs/inetfw/kern.log: syslog (UTC)
 gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
 gather/logs/inetfw/wtmp: skipped (ignored: ignore_list.txt pattern /wtmp\Z)
-gather/logs/inetfw/syslog.1.gz: skipped (ignored: extension .gz)
+gather/logs/inetfw/syslog.1.gz: syslog (UTC)
+gather/logs/inetfw/syslog.2.xz: skipped (ignored: extension .xz)
 gather/logs/docker/empty.log: skipped (empty)
 </code></pre></div>
 <p>Skipped files are no problems. Without <code>--check</code> they are skipped without output.</p>
