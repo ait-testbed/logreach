@@ -94,7 +94,8 @@ the log lines: the detected type and timezone, or why the file was skipped.
 gather/logs/inetfw/kern.log: syslog (UTC)
 gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
 gather/logs/inetfw/wtmp: skipped (ignored: ignore_list.txt pattern /wtmp\Z)
-gather/logs/inetfw/syslog.1.gz: skipped (ignored: extension .gz)
+gather/logs/inetfw/syslog.1.gz: syslog (UTC)
+gather/logs/inetfw/syslog.2.xz: skipped (ignored: extension .xz)
 gather/logs/docker/empty.log: skipped (empty)
 ```
 

@@ -1,4 +1,6 @@
+import gzip
 import logging
+import os
 import re
 from datetime import datetime, tzinfo
 from pathlib import Path
@@ -20,6 +22,26 @@ DEFAULT_TIMESTAMP_REGEX = {
     LogType.AUDIT: TimestampRegex.AUDIT,
     LogType.ACCESS: TimestampRegex.ACCESS,
 }
+
+
+def open_text(path: str | Path, errors: str | None = None) -> TextIO:
+    """Open path for reading text, decompressing it if it is gzip (detected by
+    its magic bytes, not its name)."""
+    with open(path, 'rb') as file:
+        is_gzip = file.read(2) == b'\x1f\x8b'
+    return gzip.open(path, 'rt', errors=errors) if is_gzip else open(path, 'r', errors=errors)
+
+
+def is_empty(path: str | Path) -> bool:
+    """Has path no text?
+
+    A compressed empty file still has bytes.
+    """
+    if os.path.getsize(path) == 0:  # also FIFOs and sockets, which open() would block on or fail
+        return True
+    # errors='replace': a binary file is not empty, detection reports it
+    with open_text(path, errors='replace') as file:
+        return file.read(1) == ''
 
 
 def config_factory(logfile_path: str, logtype: LogType, allow_empty_timestamp: bool = True,
@@ -100,7 +122,7 @@ class Logfile:
 
     def open(self) -> None:
         if not self.filehandle:
-            self.filehandle = open(self.config.logfile_path, 'r')
+            self.filehandle = open_text(self.config.logfile_path)
 
     def close(self) -> None:
         if self.filehandle:

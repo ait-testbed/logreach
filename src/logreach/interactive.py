@@ -13,7 +13,7 @@ from rich.text import Text
 
 from logreach.analyzer import MAX_FIRST_LINE_CHARS, Analyzer
 from logreach.exceptions import FILE_ERRORS, LogTypeError
-from logreach.logfile import DEFAULT_TIMESTAMP_REGEX, Logfile, config_factory
+from logreach.logfile import DEFAULT_TIMESTAMP_REGEX, Logfile, config_factory, open_text
 from logreach.schemas.logfileconfig import LogType
 
 
@@ -37,7 +37,7 @@ def ask_timestamp_location(path: str, logtype: LogType, console: Console) -> dic
     entry = {'logfile_path': path, 'type': logtype.value}
     if logtype == LogType.JSON:
         try:
-            with open(path) as logfile:
+            with open_text(path) as logfile:
                 record = json.loads(logfile.readline(MAX_FIRST_LINE_CHARS))
         except (json.JSONDecodeError, UnicodeDecodeError):
             console.print('The first line is no JSON object.')
@@ -91,7 +91,7 @@ def ask_and_save_logtype(path: str, error: LogTypeError, analyzer: Analyzer) -> 
     # stderr: stdout keeps only the --check lines; no markup or emoji: log lines and paths show as they are
     console = Console(stderr=True, markup=False, highlight=False, emoji=False)
     console.print(f'\n{error}')
-    with open(path, errors='replace') as logfile:
+    with open_text(path, errors='replace') as logfile:
         for lineno, line in enumerate(islice(logfile, SAMPLE_LINES), 1):
             console.print(f'  {lineno} | {line.rstrip()}')
 
