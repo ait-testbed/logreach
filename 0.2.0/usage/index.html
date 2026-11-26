@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://ait-testbed.github.io/logreach/0.2.0/usage/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Usage - Logreach</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Usage";
+        var mkdocs_page_input_path = "usage.md";
+        var mkdocs_page_url = "/logreach/0.2.0/usage/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Logreach
+        </a>
+        <div class="version">
+          {'provider': 'mike'}
+        </div><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Usage</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-the-type-is-chosen">How the type is chosen</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#timezones">Timezones</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#checking-a-directory-check">Checking a directory: --check</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#teaching-logreach-new-files-check-interactive">Teaching logreach new files: --check --interactive</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#problems-and-exit-codes">Problems and exit codes</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/">Python API</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Contributing</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../contribution/">Git Workflow</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../development/">Development</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Maintainers</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../release/">Release Process</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Logreach</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guide</li>
+      <li class="breadcrumb-item active">Usage</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ait-testbed/logreach/edit/master/docs/usage.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="usage">Usage</h1>
+<div class="highlight"><pre><span></span><code>logreach<span class="w"> </span>PATH<span class="w"> </span><span class="o">[</span>--type<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--begin<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--end<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>--check<span class="o">]</span><span class="w"> </span>...
+</code></pre></div>
+<p><code>PATH</code> is a logfile or a directory, which is walked recursively. When running from source, prefix
+the commands with <code>uv run</code>. <code>logreach --help</code> lists all options.</p>
+<h2 id="examples">Examples</h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># all lines of one logfile, type detected automatically</span>
+logreach<span class="w"> </span>/var/log/syslog
+
+<span class="c1"># only the lines between two timestamps</span>
+logreach<span class="w"> </span>/var/log/syslog<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--end<span class="w"> </span><span class="s1">'2026-09-01 15:00'</span>
+
+<span class="c1"># every logfile below a directory</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--end<span class="w"> </span><span class="s1">'2026-09-01 15:00'</span>
+
+<span class="c1"># only the lines in the window that match any of the regexes (--ignore-case for any case)</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'password'</span><span class="w"> </span>--grep<span class="w"> </span><span class="s1">'sudo:.*'</span>
+
+<span class="c1"># one line per log line, "timestamp path:lineno:line", e.g. to sort the lines of all files by time</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--plain<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort
+
+<span class="c1"># only show the detected type of each file and the problems found</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check
+
+<span class="c1"># also show on stderr why each file gets its type (which types were tried and why they failed)</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--debug
+
+<span class="c1"># also ask for the type of each file that is not detected, and save the answers</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--interactive
+
+<span class="c1"># do not list the problems at the end; the exit code is still 1 if there are any</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--quiet
+
+<span class="c1"># stop at the first problem instead of listing all problems at the end</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--check<span class="w"> </span>--fail-fast
+
+<span class="c1"># set the type instead of detecting it</span>
+logreach<span class="w"> </span>audit.log<span class="w"> </span>--type<span class="w"> </span>audit
+logreach<span class="w"> </span>app.json<span class="w"> </span>--type<span class="w"> </span>json<span class="w"> </span>--datetime-key<span class="w"> </span><span class="nb">time</span>
+logreach<span class="w"> </span>web_php.log<span class="w"> </span>--type<span class="w"> </span>syslog<span class="w"> </span>--datetime-regex<span class="w"> </span><span class="s1">'\A(.+?UTC)'</span>
+
+<span class="c1"># read dates like 1/9/2026 as 1 September</span>
+logreach<span class="w"> </span>suricata.log<span class="w"> </span>--dayfirst
+</code></pre></div>
+<h2 id="how-the-type-is-chosen">How the type is chosen</h2>
+<p>For each file, the first source that applies wins:</p>
+<ol>
+<li><code>--type</code> (with <code>--datetime-key</code>, <code>--datetime-regex</code> as needed), applied to every file</li>
+<li>the file's entry in <a href="../configuration/"><code>logtypes.json</code></a></li>
+<li>detection: json, audit, access and syslog are tried in this order; the first under which a line
+   has a timestamp wins</li>
+</ol>
+<p>Timestamps without a year (e.g. <code>Sep  1 13:25:26</code>) take the year of <code>--begin</code>, else <code>--end</code>.</p>
+<h2 id="timezones">Timezones</h2>
+<p>Timestamps without a timezone (classic syslog like <code>Sep  1 13:25:26</code>, and <code>--begin</code>/<code>--end</code> like
+<code>2026-09-01 14:00</code>) are taken as UTC. Timestamps that have one, like audit epochs or
+<code>2026-09-01T14:09:21+02:00</code>, keep it, so files in different timezones are compared correctly.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># logs and --begin / --end without timezone are Vienna time</span>
+logreach<span class="w"> </span>gather/logs<span class="w"> </span>--begin<span class="w"> </span><span class="s1">'2026-09-01 14:00'</span><span class="w"> </span>--timezone<span class="w"> </span>Europe/Vienna
+</code></pre></div>
+<p>A single file or host that logs in another timezone gets a <code>"timezone"</code> in
+<a href="../configuration/"><code>logtypes.json</code></a>, which overrides <code>--timezone</code> for that file.</p>
+<p><code>--check</code> shows the timezone each file is read in, so a wrong assumption shows up early:</p>
+<div class="highlight"><pre><span></span><code>gather/logs/inetfw/kern.log: syslog (UTC)
+gather/logs/winhost/app.log: syslog (Europe/Vienna)
+gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
+</code></pre></div>
+<p>The timezone only matters for timestamps without one; <code>eve.json</code> stamps like
+<code>2026-09-01T13:25:36+0000</code> keep their own.</p>
+<h2 id="checking-a-directory-check">Checking a directory: <code>--check</code></h2>
+<p><code>--check</code> reads every file and reports the same problems, but prints one line per file instead of
+the log lines: the detected type and timezone, or why the file was skipped.</p>
+<div class="highlight"><pre><span></span><code>gather/logs/inetfw/kern.log: syslog (UTC)
+gather/logs/inetfw/suricata/eve.json: json (timestamp, UTC)
+gather/logs/inetfw/wtmp: skipped (ignored: ignore_list.txt pattern /wtmp\Z)
+gather/logs/inetfw/syslog.1.gz: syslog (UTC)
+gather/logs/inetfw/syslog.2.xz: skipped (ignored: extension .xz)
+gather/logs/docker/empty.log: skipped (empty)
+</code></pre></div>
+<p>Skipped files are no problems. Without <code>--check</code> they are skipped without output.</p>
+<h2 id="teaching-logreach-new-files-check-interactive">Teaching logreach new files: <code>--check --interactive</code></h2>
+<p>Run this first on a new directory. For every file whose type is not detected, <code>--interactive</code>
+(<code>-i</code>) shows its first lines and asks what to do with it:</p>
+<ul>
+<li><code>skip</code> leaves it undetermined, so it is reported as a problem.</li>
+<li><code>ignore</code> adds the file's path to <a href="../configuration/"><code>ignore_list.txt</code></a>.</li>
+<li><code>edit</code> asks for the log type and what it needs:<ul>
+<li><code>syslog</code>, <code>audit</code>, <code>access</code>: Enter keeps the type's default regex; a custom regex needs a
+  group <code>(...)</code> around the timestamp.</li>
+<li><code>json</code>: pick the key of the timestamp from the keys of the first line.</li>
+<li>If the timestamps have no timezone, you are asked for one.</li>
+</ul>
+</li>
+</ul>
+<p>Before saving, logreach shows the first parsed timestamps. If the answer reads no timestamp, or
+you answer <code>n</code>, it asks again whether to edit, ignore or skip the file. Saved answers go into
+<a href="../configuration/"><code>logtypes.json</code></a> with the path exactly as shown. To change an answer, edit or delete its line in
+<code>logtypes.json</code>; <code>dayfirst</code> can be added this way if necessary.</p>
+<p><code>--interactive</code> only works together with <code>--check</code> and in a terminal. Ctrl-D skips the remaining questions.</p>
+<h2 id="problems-and-exit-codes">Problems and exit codes</h2>
+<p>Logreach does not stop at a problem. It lists them on stderr at the end of the run:</p>
+<ul>
+<li>files where no type fits</li>
+<li>lines without a timestamp, including JSON lines that are not valid JSON (e.g. cut off mid-write)</li>
+<li>errors while reading a file, e.g. a JSON line without the timestamp key</li>
+</ul>
+<p><code>--max-problems</code> limits how many are listed, <code>-q</code> / <code>--quiet</code> lists none (the exit code still
+shows them), <code>--fail-fast</code> stops at the first one, and <code>--require-timestamp</code> treats a line without a
+timestamp as an error.</p>
+<table>
+<thead>
+<tr>
+<th>Exit code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>no problems</td>
+</tr>
+<tr>
+<td>1</td>
+<td>problems found</td>
+</tr>
+<tr>
+<td>2</td>
+<td>usage error, e.g. <code>PATH</code> does not exist or <code>--type json</code> without <code>--datetime-key</code></td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../configuration/" class="btn btn-neutral float-left" title="Configuration"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../api/" class="btn btn-neutral float-right" title="Python API">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ait-testbed/logreach" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../configuration/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

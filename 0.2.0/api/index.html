@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://ait-testbed.github.io/logreach/0.2.0/api/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Python API - Logreach</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../css/version-select.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Python API";
+        var mkdocs_page_input_path = "api.md";
+        var mkdocs_page_url = "/logreach/0.2.0/api/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Logreach
+        </a>
+        <div class="version">
+          {'provider': 'mike'}
+        </div><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guide</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Python API</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#read-lines">Read lines</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#file-events">File events</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#problems">Problems</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#options">Options</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Contributing</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../contribution/">Git Workflow</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../development/">Development</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Maintainers</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../release/">Release Process</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Logreach</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guide</li>
+      <li class="breadcrumb-item active">Python API</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/ait-testbed/logreach/edit/master/docs/api.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="python-api">Python API</h1>
+<p>Everything the <code>logreach</code> command does from Python code.</p>
+<h2 id="read-lines">Read lines</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zoneinfo</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZoneInfo</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">logreach</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileEvent</span><span class="p">,</span> <span class="n">Logreach</span>
+
+<span class="n">reader</span> <span class="o">=</span> <span class="n">Logreach</span><span class="p">(</span><span class="n">begin</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span>
+                  <span class="n">timezone</span><span class="o">=</span><span class="n">ZoneInfo</span><span class="p">(</span><span class="s1">'Europe/Vienna'</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">'/var/log'</span><span class="p">):</span>  <span class="c1"># a file or a directory</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">FileEvent</span><span class="p">):</span>
+        <span class="k">continue</span>  <span class="c1"># a new file starts, see below</span>
+    <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">'no timestamp:'</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">raw</span><span class="p">)</span>
+</code></pre></div>
+<p><code>read()</code> yields, file by file, a <code>FileEvent</code> and then the file's lines in order, as they are read.
+Each line is a <code>Logline</code> with <code>timestamp</code>, <code>raw</code>, <code>lineno</code>, <code>filename</code> and <code>reason</code>.</p>
+<p>Lines without timestamp are yielded too (<code>timestamp</code> is <code>None</code>, <code>reason</code> says why). They belong to the
+line with timestamp before them, e.g. a stack trace, and are in the time window if that line is.</p>
+<h2 id="file-events">File events</h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">logreach</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileEvent</span><span class="p">,</span> <span class="n">FileStatus</span>
+
+<span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">'/var/log'</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">FileEvent</span><span class="p">)</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">status</span> <span class="o">!=</span> <span class="n">FileStatus</span><span class="o">.</span><span class="n">READ</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">item</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th><code>status</code></th>
+<th><code>message</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>READ</code></td>
+<td>how it is read, e.g. <code>syslog (UTC)</code>; its lines follow</td>
+</tr>
+<tr>
+<td><code>SKIPPED</code></td>
+<td>why: ignored or empty</td>
+</tr>
+<tr>
+<td><code>UNDETERMINED</code></td>
+<td>no log type fits</td>
+</tr>
+<tr>
+<td><code>FAILED</code></td>
+<td>the error that stopped reading the file</td>
+</tr>
+</tbody>
+</table>
+<p><code>reader.check(path)</code> yields only the events, e.g. to see the detected type of each file.</p>
+<h2 id="problems">Problems</h2>
+<p>Problems never stop a run; they are collected in <code>reader.problems</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">reader</span><span class="o">.</span><span class="n">problems</span><span class="o">.</span><span class="n">messages</span>            <span class="c1"># e.g. '/var/log/app.log:3: no timestamp: ...'</span>
+<span class="n">reader</span><span class="o">.</span><span class="n">problems</span><span class="o">.</span><span class="n">unparsed_lines</span>      <span class="c1"># counts</span>
+<span class="n">reader</span><span class="o">.</span><span class="n">problems</span><span class="o">.</span><span class="n">undetermined_files</span>
+<span class="n">reader</span><span class="o">.</span><span class="n">problems</span><span class="o">.</span><span class="n">failed_files</span>
+</code></pre></div>
+<p>Each <code>read()</code> (and <code>check()</code>) starts with empty problems.</p>
+<h2 id="options">Options</h2>
+<p>All are keyword arguments of <code>Logreach(...)</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>begin</code>, <code>end</code></td>
+<td><code>datetime</code>s of the time window; without timezone they are in <code>timezone</code></td>
+</tr>
+<tr>
+<td><code>timezone</code></td>
+<td>timezone of timestamps without one (default UTC)</td>
+</tr>
+<tr>
+<td><code>grep</code>, <code>ignore_case</code></td>
+<td>only lines matching one of these regexes</td>
+</tr>
+<tr>
+<td><code>logtype</code></td>
+<td><code>'syslog'</code>, <code>'audit'</code>, <code>'access'</code> or <code>'json'</code> instead of detecting the type</td>
+</tr>
+<tr>
+<td><code>datetime_key</code></td>
+<td>timestamp key, required for <code>logtype='json'</code></td>
+</tr>
+<tr>
+<td><code>datetime_regex</code></td>
+<td>regex whose first group is the timestamp, for the other types</td>
+</tr>
+<tr>
+<td><code>dayfirst</code></td>
+<td>read 1/9/2026 as 1 September</td>
+</tr>
+<tr>
+<td><code>require_timestamp</code></td>
+<td>a line without timestamp stops its file (<code>FAILED</code>)</td>
+</tr>
+<tr>
+<td><code>fail_fast</code></td>
+<td>stop at the first problem</td>
+</tr>
+<tr>
+<td><code>types_file</code>, <code>ignores_file</code></td>
+<td>the <a href="../configuration/">configuration files</a>; default <code>None</code>: none are read or created</td>
+</tr>
+<tr>
+<td><code>ignored_extensions</code></td>
+<td>e.g. <code>['.gz']</code>: files in directories with these endings are skipped</td>
+</tr>
+</tbody>
+</table>
+<p>Invalid options raise <code>ValueError</code> (or <code>TypeError</code> for <code>begin</code>/<code>end</code> that are no <code>datetime</code>).</p>
+<h2 id="examples">Examples</h2>
+<p>Errors of the last hour, from a JSON log:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="n">reader</span> <span class="o">=</span> <span class="n">Logreach</span><span class="p">(</span><span class="n">logtype</span><span class="o">=</span><span class="s1">'json'</span><span class="p">,</span> <span class="n">datetime_key</span><span class="o">=</span><span class="s1">'ts'</span><span class="p">,</span> <span class="n">grep</span><span class="o">=</span><span class="p">[</span><span class="s1">'error'</span><span class="p">],</span> <span class="n">ignore_case</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                  <span class="n">begin</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">errors</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s1">'app.json'</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">FileEvent</span><span class="p">)]</span>
+</code></pre></div>
+<p>Detected type of every file, with the types file of the command:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">Logreach</span><span class="p">(</span><span class="n">types_file</span><span class="o">=</span><span class="s1">'logtypes.json'</span><span class="p">)</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="s1">'/var/log'</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+</code></pre></div>
+<p><code>read()</code> is a generator: iterate over it instead of <code>list()</code> to keep memory low on large logs.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../usage/" class="btn btn-neutral float-left" title="Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../contribution/" class="btn btn-neutral float-right" title="Git Workflow">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/ait-testbed/logreach" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../usage/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../contribution/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+      <script src="../js/version-select.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
