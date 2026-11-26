@@ -7,7 +7,7 @@ from typing import Any, Iterable
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from logreach.exceptions import DateTimeNotFound, LogreachError, LogTypeError
-from logreach.logfile import Logfile, config_factory
+from logreach.logfile import Logfile, config_factory, is_empty, open_text
 from logreach.schemas.logfileconfig import LogConfig, LogType
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ MAX_FIRST_LINE_CHARS = 1_000_000
 
 def json_timestamp_key(path: str) -> str | None:
     """Return the first known timestamp key in the file's first line."""
-    with open(path, 'r') as logfile:
+    with open_text(path) as logfile:
         record = json.loads(logfile.readline(MAX_FIRST_LINE_CHARS))
     if not isinstance(record, dict):
         return None
@@ -196,7 +196,7 @@ class Analyzer:
             logger.debug('%s: type from %s', path, self._types.types_file)
             return self._types.config_for(path, allow_empty_timestamp, begin=begin, end=end,
                                           dayfirst=dayfirst, timezone=timezone)
-        if os.path.getsize(path) == 0:
+        if is_empty(path):
             raise LogTypeError(f'{path} is empty')
 
         for logtype in DETECTION_ORDER:

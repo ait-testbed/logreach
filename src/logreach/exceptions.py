@@ -1,4 +1,5 @@
 import json
+import zlib
 
 
 class LogreachError(Exception):
@@ -19,5 +20,6 @@ class LogTypeError(LogreachError):
     """Raised when no log type fits a logfile, or it is empty."""
 
 
-# errors while reading one file: reported at the end, the run goes on with the next file
-FILE_ERRORS = (LogreachError, OSError, UnicodeDecodeError, json.JSONDecodeError)
+# errors while reading one file: reported at the end, the run goes on with the next file;
+# EOFError and zlib.error come from truncated or corrupt gzip files
+FILE_ERRORS = (LogreachError, OSError, UnicodeDecodeError, json.JSONDecodeError, EOFError, zlib.error)

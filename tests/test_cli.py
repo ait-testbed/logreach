@@ -1,3 +1,4 @@
+import gzip
 import io
 import json
 import re
@@ -21,16 +22,16 @@ def test_prints_syslog_lines(make_logs, run_logreach):
 
 
 def test_reads_single_file_even_if_ignored(make_logs, run_logreach):
-    logs = make_logs({'syslog.1.gz': SYSLOG})  # .gz is a default ignored extension
-    printed, exit_code = run_logreach(logs / 'syslog.1.gz')
+    logs = make_logs({'syslog.1.xz': SYSLOG})  # .xz is a default ignored extension
+    printed, exit_code = run_logreach(logs / 'syslog.1.xz')
     assert [line.lineno for line in printed] == [1, 2]
     assert exit_code == 0
 
 
 def test_skips_ignored_and_empty_files_without_output(make_logs, ignore_list, run_logreach, capsys):
-    logs = make_logs({'syslog': SYSLOG, 'syslog.old': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG,
+    logs = make_logs({'syslog': SYSLOG, 'syslog.old': SYSLOG, 'syslog.1.xz': SYSLOG, 'app.conf': SYSLOG,
                       'empty.log': ''})
-    ignore_list('\\.old\\Z')  # .gz and .conf are default ignored extensions
+    ignore_list('\\.old\\Z')  # .xz and .conf are default ignored extensions
     printed, exit_code = run_logreach(logs)
     assert {line.filename for line in printed} == {str(logs / 'syslog')}
     assert exit_code == 0
@@ -38,20 +39,20 @@ def test_skips_ignored_and_empty_files_without_output(make_logs, ignore_list, ru
 
 
 @pytest.mark.parametrize('extensions, read', [
-    pytest.param('', {'syslog', 'syslog.1.gz', 'app.conf'}, id='none'),
-    pytest.param('.conf', {'syslog', 'syslog.1.gz'}, id='custom'),
-    pytest.param(' .conf , gz ', {'syslog'}, id='spaces-and-no-dot'),
+    pytest.param('', {'syslog', 'syslog.1.xz', 'app.conf'}, id='none'),
+    pytest.param('.conf', {'syslog', 'syslog.1.xz'}, id='custom'),
+    pytest.param(' .conf , xz ', {'syslog'}, id='spaces-and-no-dot'),
 ])
 def test_ignored_extension_option(make_logs, run_logreach, extensions, read):
-    logs = make_logs({'syslog': SYSLOG, 'syslog.1.gz': SYSLOG, 'app.conf': SYSLOG})
+    logs = make_logs({'syslog': SYSLOG, 'syslog.1.xz': SYSLOG, 'app.conf': SYSLOG})
     printed, _ = run_logreach(logs, '--ignored-extensions', extensions)
     assert {line.filename for line in printed} == {str(logs / name) for name in read}
 
 
 def test_old_option_spelling_still_works(make_logs, run_logreach):
-    logs = make_logs({'syslog': SYSLOG, 'syslog.1.gz': SYSLOG})
+    logs = make_logs({'syslog': SYSLOG, 'syslog.1.xz': SYSLOG})
     printed, _ = run_logreach(logs, '--ignored-extension', '')
-    assert {line.filename for line in printed} == {str(logs / 'syslog'), str(logs / 'syslog.1.gz')}
+    assert {line.filename for line in printed} == {str(logs / 'syslog'), str(logs / 'syslog.1.xz')}
 
 
 @pytest.mark.parametrize('extra_args', [(), ('--type', 'syslog')])
@@ -61,6 +62,38 @@ def test_skips_empty_file(make_logs, run_logreach, capsys, extra_args):
     assert printed == []
     assert exit_code == 0
     assert capsys.readouterr().out == ''
+
+
+# --- gzip
+
+def test_reads_gzip_files_in_directories(make_logs, run_logreach):
+    logs = make_logs({'syslog.1.gz': gzip.compress(SYSLOG.encode())})
+    printed, exit_code = run_logreach(logs)
+    assert [(line.filename, line.lineno) for line in printed] == [(str(logs / 'syslog.1.gz'), 1),
+                                                                  (str(logs / 'syslog.1.gz'), 2)]
+    assert exit_code == 0
+
+
+def test_check_detects_type_of_gzip_files(make_logs, run_logreach, capsys):
+    logs = make_logs({'eve.json.gz': gzip.compress(EVE_JSON.encode()), 'empty.gz': gzip.compress(b''),
+                      'misnamed': gzip.compress(SYSLOG.encode())})  # detected by content, not name
+    _, exit_code = run_logreach(logs, '--check')
+    assert exit_code == 0
+    assert sorted(capsys.readouterr().out.splitlines()) == [
+        f'{logs / "empty.gz"}: skipped (empty)',
+        f'{logs / "eve.json.gz"}: json (timestamp, UTC)',
+        f'{logs / "misnamed"}: syslog (UTC)',
+    ]
+
+
+@pytest.mark.parametrize('cut', [pytest.param(lambda data: data[:len(data) // 2], id='truncated'),
+                                 pytest.param(lambda data: data[:12] + b'x' * 20 + data[32:], id='corrupt')])
+def test_reports_broken_gzip_file_and_goes_on(make_logs, run_logreach, capsys, cut):
+    logs = make_logs({'syslog': SYSLOG, 'broken.gz': cut(gzip.compress(SYSLOG.encode() * 500))})
+    printed, exit_code = run_logreach(logs)
+    assert {line.filename for line in printed} >= {str(logs / 'syslog')}
+    assert exit_code == 1
+    assert f'{logs / "broken.gz"}: ' in capsys.readouterr().err
 
 
 # --- choosing the log type
@@ -332,7 +365,7 @@ def test_check_shows_timezone_of_each_file(make_logs, types_file, run_logreach, 
 
 
 def test_check_shows_why_files_are_skipped(make_logs, ignore_list, run_logreach, capsys):
-    logs = make_logs({'syslog': SYSLOG, 'empty.log': '', 'syslog.1.gz': SYSLOG, 'README': 'x\n'})
+    logs = make_logs({'syslog': SYSLOG, 'empty.log': '', 'syslog.1.xz': SYSLOG, 'README': 'x\n'})
     ignores = ignore_list('README\\Z')
     printed, exit_code = run_logreach(logs, '--check')
     assert printed == []
@@ -341,7 +374,7 @@ def test_check_shows_why_files_are_skipped(make_logs, ignore_list, run_logreach,
         f'{logs / "README"}: skipped (ignored: {ignores} pattern README\\Z)',
         f'{logs / "empty.log"}: skipped (empty)',
         f'{logs / "syslog"}: syslog (UTC)',
-        f'{logs / "syslog.1.gz"}: skipped (ignored: extension .gz)',
+        f'{logs / "syslog.1.xz"}: skipped (ignored: extension .xz)',
     ])
 
 

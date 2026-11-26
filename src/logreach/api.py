@@ -11,7 +11,7 @@ from enum import Enum
 
 from logreach.analyzer import Analyzer
 from logreach.exceptions import FILE_ERRORS, LogTypeError
-from logreach.logfile import Logfile, config_factory
+from logreach.logfile import Logfile, config_factory, is_empty
 from logreach.schemas.logfileconfig import LogConfig, LogType
 from logreach.schemas.logline import Logline
 
@@ -189,7 +189,7 @@ class Logreach:
     def _read_file(self, path: str, ignored: str | None) -> Iterator[Logline | FileEvent]:
         if ignored:
             skip_reason = f'ignored: {ignored}'
-        elif os.path.getsize(path) == 0:
+        elif is_empty(path):
             skip_reason = 'empty'
         else:
             skip_reason = None
