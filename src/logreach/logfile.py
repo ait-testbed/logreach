@@ -1,5 +1,6 @@
 import gzip
 import logging
+import os
 import re
 from datetime import datetime, tzinfo
 from pathlib import Path
@@ -36,6 +37,8 @@ def is_empty(path: str | Path) -> bool:
 
     A compressed empty file still has bytes.
     """
+    if os.path.getsize(path) == 0:  # also FIFOs and sockets, which open() would block on or fail
+        return True
     # errors='replace': a binary file is not empty, detection reports it
     with open_text(path, errors='replace') as file:
         return file.read(1) == ''
