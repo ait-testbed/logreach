@@ -19,7 +19,7 @@ suricata/stats\.log\Z
 ```
 
 Files with the extensions in `--ignored-extensions` are skipped as well (default
-`.gz,.xz,.conf,.journal,.journal~`; `''` for none).
+`.xz,.conf,.journal,.journal~`; `''` for none). gzip files are read, not skipped: add `.gz` to skip them.
 
 ## `logtypes.json`: set the type of a file
 
