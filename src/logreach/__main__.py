@@ -88,7 +88,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--timezone', default='UTC', type=parsed_timezone,
                         help='timezone of timestamps without one, in the logs and in --begin / --end, '
                              'e.g. Europe/Vienna; a "timezone" in the types file overrides it per file')
-    parser.add_argument('--ignored-extensions', default='.gz,.xz,.conf,.journal,.journal~',
+    parser.add_argument('--ignored-extensions', default='.xz,.conf,.journal,.journal~',
                         help="comma separated list of file extensions ignored in directories, '' for none")
     parser.add_argument('--ignore-file', default=DEFAULT_IGNORES_FILE,
                         help='file with one regex per line; matching paths in directories are ignored')

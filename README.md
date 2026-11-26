@@ -12,7 +12,7 @@ Requires Python >= 3.14.
 From PyPI:
 
 ```bash
-uv tool install logreach # or pip install logreach   
+uv tool install logreach # or pip install logreach
 logreach --help
 ```
 
@@ -38,7 +38,7 @@ uv run logreach /var/log/syslog --begin '2026-09-01 14:00' --end '2026-09-01 15:
 # every logfile below a directory
 uv run logreach gather/logs --begin '2026-09-01 14:00' --end '2026-09-01 15:00'
 
-# one line per log line, "timestamp path:lineno:line" (timestamp in UTC), e.g. to sort all files by time
+# one line per log line, "timestamp path:lineno:line" (timestamp in UTC), for example to sort all files by time
 uv run logreach gather/logs --begin '2026-09-01 14:00' --plain | sort
 
 # only show the detected type of each file and the problems found
@@ -47,6 +47,9 @@ uv run logreach gather/logs --check
 # also ask for the type of each file that is not detected, and save the answers in logtypes.json
 uv run logreach gather/logs --check --interactive
 ```
+
+gzip-compressed files (e.g. rotated `syslog.2.gz`) are decompressed while reading; they are recognized
+by their content, not their name.
 
 Files where no type fits and lines without a timestamp are listed on stderr at the end of the
 run (exit code 1). See `logreach --help` for all options and the
