@@ -48,12 +48,11 @@ uv run logreach gather/logs --check
 uv run logreach gather/logs --check --interactive
 ```
 
-gzip-compressed files (e.g. rotated `syslog.2.gz`) are decompressed while reading; they are recognized
-by their content, not their name.
+gzip-compressed files (e.g. rotated `syslog.2.gz`) are decompressed while reading; they are recognized by their content, not their name.
 
 Files where no type fits and lines without a timestamp are listed on stderr at the end of the
 run (exit code 1). See `logreach --help` for all options and the
-[documentation](https://ait-testbed.github.io/logreach/) for more examples.
+[documentation](https://ait-testbed.github.io/logreach/) for more examples
 
 ### Configuration files
 
